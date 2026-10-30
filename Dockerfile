@@ -1,5 +1,7 @@
 # Multi-stage Dockerfile for Clinic Transfer System
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
+
+RUN apt-get update -y && apt-get install -y openssl
 
 WORKDIR /app
 
@@ -18,7 +20,9 @@ COPY server ./server
 RUN cd server && npx prisma generate && npm run build
 
 # Production Runner
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
+
+RUN apt-get update -y && apt-get install -y openssl
 
 WORKDIR /app
 ENV NODE_ENV=production
