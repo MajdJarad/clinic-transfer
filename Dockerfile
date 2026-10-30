@@ -27,6 +27,8 @@ RUN apt-get update -y && apt-get install -y openssl
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV DATABASE_URL="file:./dev.db"
+ENV JWT_SECRET="clinic-transfer-jwt-secret-production"
 
 COPY --from=builder /app/server/package*.json ./server/
 COPY --from=builder /app/server/node_modules ./server/node_modules
