@@ -570,233 +570,244 @@ export function DriverApp() {
           </div>
         )}
 
-        {/* ══════════════════ 2. GOOGLE MAPS NAVIGATION (EDITABLE WAYPOINTS & SEARCH) ══════════════════ */}
+        {/* ══════════════════ 2. GOOGLE MAPS NAVIGATION (MOBILE-OPTIMIZED) ══════════════════ */}
         {activeTab === 'navigation' && (
-          <div className="space-y-4">
-            {/* Google Directions Form (Floating / Top Card) */}
-            <Card className="p-4 space-y-3">
-              <div className="flex items-center justify-between border-b border-border/70 pb-2">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 text-white font-black text-xs shadow-sm">
-                    🧭
-                  </span>
-                  <div>
-                    <h2 className="text-sm font-bold text-fg">ملاحة المسار (Google Maps)</h2>
-                    <p className="text-[11px] text-muted">يمكنك البحث والتعديل أو اختيار موقع جديد</p>
+          <div className="space-y-2.5 md:space-y-0 md:grid md:grid-cols-12 md:gap-4 items-start">
+            {/* ─── Column 1: Controls & Route Details (Full width on Mobile, 5 cols on Desktop) ─── */}
+            <div className="space-y-2.5 md:col-span-5">
+              {/* Google Maps Route Inputs Card */}
+              <Card className="p-2.5 sm:p-3 space-y-2">
+                {/* Header & Travel Mode Toggle */}
+                <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white font-black text-xs shadow-sm">
+                      🧭
+                    </span>
+                    <span className="text-xs font-bold text-fg truncate">ملاحة خرائط Google</span>
+                  </div>
+
+                  {/* Mode Selector */}
+                  <div className="flex items-center gap-1 bg-surface2 p-0.5 rounded-lg border border-border/70 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setTravelMode('driving')}
+                      className={`rounded-md px-2 py-0.5 text-[11px] font-bold transition ${
+                        travelMode === 'driving' ? 'bg-blue-600 text-white shadow-sm' : 'text-muted hover:text-fg'
+                      }`}
+                    >
+                      🚗 سيارة
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTravelMode('walking')}
+                      className={`rounded-md px-2 py-0.5 text-[11px] font-bold transition ${
+                        travelMode === 'walking' ? 'bg-blue-600 text-white shadow-sm' : 'text-muted hover:text-fg'
+                      }`}
+                    >
+                      🚶 مشي
+                    </button>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setTravelMode('driving')}
-                    className={`rounded-lg px-2 py-1 text-xs font-bold transition ${
-                      travelMode === 'driving' ? 'bg-blue-600 text-white' : 'bg-surface2 text-muted'
-                    }`}
-                  >
-                    🚗 سيارة
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTravelMode('walking')}
-                    className={`rounded-lg px-2 py-1 text-xs font-bold transition ${
-                      travelMode === 'walking' ? 'bg-blue-600 text-white' : 'bg-surface2 text-muted'
-                    }`}
-                  >
-                    🚶 مشي
-                  </button>
-                </div>
-              </div>
-
-              {/* Waypoints Form (A & B with Swap and Clear) */}
-              <div className="relative space-y-2">
-                {/* Waypoint A (Origin) */}
-                <div className="flex items-center gap-2.5 rounded-xl bg-surface2 px-3 py-2 border border-border focus-within:border-blue-500 transition">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white font-bold text-[10px]">
-                    A
-                  </span>
-                  <input
-                    type="text"
-                    value={origin}
-                    onChange={(e) => handleAddressSearch(e.target.value, 'origin')}
-                    placeholder="حدد نقطة الانطلاق أو اكتب موقعاً..."
-                    className="w-full bg-transparent text-xs text-fg placeholder-muted focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={useCurrentGps}
-                    title="استخدام موقعي الحالي"
-                    className="text-[11px] text-blue-500 hover:underline shrink-0"
-                  >
-                    📍 موقعي
-                  </button>
-                  {origin && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOrigin('');
-                        setOrigCoord(null);
-                      }}
-                      className="text-xs text-muted hover:text-fg"
-                      title="إلغاء الموقع"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-
-                {/* Swap Button */}
-                <div className="flex justify-end pe-4 -my-1.5 relative z-10">
-                  <button
-                    type="button"
-                    onClick={swapWaypoints}
-                    title="تبديل نقطة الانطلاق والوجهة"
-                    className="grid h-6 w-6 place-items-center rounded-full bg-surface border border-border text-muted shadow hover:text-fg hover:scale-105 transition"
-                  >
-                    ⇅
-                  </button>
-                </div>
-
-                {/* Waypoint B (Destination) */}
-                <div className="flex items-center gap-2.5 rounded-xl bg-surface2 px-3 py-2 border border-border focus-within:border-blue-500 transition">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-600 text-white font-bold text-[10px]">
-                    B
-                  </span>
-                  <input
-                    type="text"
-                    value={destination}
-                    onChange={(e) => handleAddressSearch(e.target.value, 'destination')}
-                    placeholder="حدد الوجهة أو أضف موقعاً جديداً..."
-                    className="w-full bg-transparent text-xs text-fg placeholder-muted focus:outline-none"
-                  />
-                  {destination && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setDestination('');
-                        setDestCoord(null);
-                      }}
-                      className="text-xs text-muted hover:text-fg"
-                      title="إلغاء الموقع"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-
-                {/* Autocomplete Suggestions Dropdown */}
-                {suggestions.length > 0 && searchingField && (
-                  <div className="absolute top-full start-0 end-0 z-40 mt-1 max-h-48 overflow-y-auto rounded-xl border border-border bg-surface p-1 shadow-2xl text-xs">
-                    {suggestions.map((s, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => selectSuggestion(s)}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-start text-fg hover:bg-surface2 transition"
-                      >
-                        <span>📍</span>
-                        <span className="truncate">{s.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Linked Transfer Context (if coming from a Trip) */}
-              {selectedTrip && (
-                <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-3 space-y-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] text-blue-500 font-bold">رحلة ترانسفير مرتبطة</span>
-                      <p className="font-bold text-fg text-sm">المريض: {selectedTrip.patientName}</p>
-                      <p className="text-muted font-mono" dir="ltr">{selectedTrip.patientPhone}</p>
+                {/* Unified Google Maps Search Box */}
+                <div className="relative rounded-xl border border-border bg-surface2/60 p-2 focus-within:border-blue-500 transition">
+                  <div className="flex items-center gap-2">
+                    {/* Visual Route Indicator Dots & Dotted Line */}
+                    <div className="flex flex-col items-center justify-between py-1 self-stretch shrink-0">
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-500/20" title="نقطة الانطلاق (A)" />
+                      <div className="w-0.5 flex-1 my-1 border-s-2 border-dotted border-muted/50" />
+                      <span className="h-2.5 w-2.5 rounded-sm bg-red-500 ring-2 ring-red-500/20" title="الوجهة (B)" />
                     </div>
-                    <StatusPill status={selectedTrip.status} label={t(tripStatusKeys[selectedTrip.status])} />
+
+                    {/* Inputs */}
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      {/* Origin Input */}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <input
+                          type="text"
+                          value={origin}
+                          onChange={(e) => handleAddressSearch(e.target.value, 'origin')}
+                          placeholder="حدد نقطة الانطلاق..."
+                          className="w-full bg-transparent text-xs text-fg placeholder-muted focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={useCurrentGps}
+                          title="استخدام موقعي الحالي"
+                          className="text-[10px] text-blue-500 hover:underline shrink-0 font-medium whitespace-nowrap bg-blue-500/10 px-1.5 py-0.5 rounded"
+                        >
+                          📍 موقعي
+                        </button>
+                        {origin && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOrigin('');
+                              setOrigCoord(null);
+                            }}
+                            className="text-xs text-muted hover:text-fg shrink-0 p-0.5"
+                            title="إلغاء الموقع"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="border-t border-border/50" />
+
+                      {/* Destination Input */}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <input
+                          type="text"
+                          value={destination}
+                          onChange={(e) => handleAddressSearch(e.target.value, 'destination')}
+                          placeholder="حدد الوجهة أو أضف موقعاً جديداً..."
+                          className="w-full bg-transparent text-xs text-fg placeholder-muted focus:outline-none"
+                        />
+                        {destination && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDestination('');
+                              setDestCoord(null);
+                            }}
+                            className="text-xs text-muted hover:text-fg shrink-0 p-0.5"
+                            title="إلغاء الموقع"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Swap Button on the Side */}
+                    <button
+                      type="button"
+                      onClick={swapWaypoints}
+                      title="تبديل نقطة الانطلاق والوجهة"
+                      className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-surface border border-border text-muted shadow-sm hover:text-fg hover:border-blue-500 transition active:scale-95"
+                    >
+                      ⇅
+                    </button>
                   </div>
 
-                  {/* Actions for Transfer */}
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    {NEXT_ACTION[selectedTrip.status] && (
-                      <Button
-                        size="sm"
-                        variant={NEXT_ACTION[selectedTrip.status]?.variant}
-                        className="w-full font-bold"
-                        onClick={() => advanceTrip(selectedTrip)}
-                      >
-                        {NEXT_ACTION[selectedTrip.status]?.label}
-                      </Button>
-                    )}
-                    <Button size="sm" variant="success" className="w-full" onClick={() => setWaTrip(selectedTrip)}>
-                      💬 تبليغ واتساب
-                    </Button>
-                  </div>
+                  {/* Autocomplete Suggestions Dropdown */}
+                  {suggestions.length > 0 && searchingField && (
+                    <div className="absolute top-full start-0 end-0 z-50 mt-1 max-h-44 overflow-y-auto rounded-xl border border-border bg-surface p-1 shadow-2xl text-xs">
+                      {suggestions.map((s, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => selectSuggestion(s)}
+                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-start text-fg hover:bg-surface2 transition"
+                        >
+                          <span className="shrink-0">📍</span>
+                          <span className="truncate text-xs">{s.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
 
-              {/* Route Summary & Big Google Navigation Button */}
-              <div className="border-t border-border/70 pt-3 space-y-3">
+                {/* Route Summary (ETA & Distance) */}
                 {calculatingRoute ? (
-                  <p className="text-xs text-muted text-center animate-pulse py-1">
+                  <p className="text-[11px] text-muted text-center animate-pulse py-1">
                     جارٍ حساب مسار الملاحة...
                   </p>
                 ) : routeInfo ? (
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-2xl font-black text-blue-600">
+                  <div className="flex items-center justify-between bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-2">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xl font-black text-blue-600">
                         {Math.round(routeInfo.duration / 60)} دقيقة
-                      </div>
-                      <p className="text-xs text-muted">
-                        {(routeInfo.distance / 1000).toFixed(1)} كم • أسرع مسار في ظل حركة المرور الحالية
-                      </p>
+                      </span>
+                      <span className="text-xs text-muted font-medium">
+                        ({(routeInfo.distance / 1000).toFixed(1)} كم)
+                      </span>
                     </div>
-                    <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-emerald-600 font-bold text-xs">
+                    <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-600 font-bold text-[10px]">
                       أسرع مسار ✓
                     </span>
                   </div>
                 ) : null}
 
-                {/* Launch Google Maps App Action Button */}
+                {/* Big Google Navigation Button */}
                 <button
                   type="button"
                   onClick={openInGoogleMaps}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/30 transition hover:bg-blue-700 hover:shadow-xl active:scale-[0.99]"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-blue-600/30 transition hover:bg-blue-700 active:scale-[0.99]"
                 >
-                  <span className="text-base">🧭</span>
-                  <span>بدء الملاحة الصوتية في تطبيق خرائط Google</span>
+                  <span className="text-sm">🧭</span>
+                  <span>بدء الملاحة في خرائط Google</span>
                 </button>
-              </div>
-            </Card>
+              </Card>
 
-            {/* Map Canvas */}
-            <Card className="overflow-hidden p-2">
-              <MapView
-                points={points}
-                route={route}
-                height={380}
-                center={origCoord ?? mapConfig.defaultCenter}
-                zoom={13}
-                trafficKey={mapConfig.tomtomTraffic ? mapConfig.tomtomApiKey : undefined}
-              />
-            </Card>
+              {/* Linked Transfer Context (if coming from a Trip) */}
+              {selectedTrip && (
+                <div className="rounded-xl bg-surface border border-border p-2.5 space-y-2 text-xs shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] text-blue-500 font-bold">رحلة ترانسفير مرتبطة</span>
+                      <p className="font-bold text-fg text-xs sm:text-sm">المريض: {selectedTrip.patientName}</p>
+                      <p className="text-muted font-mono text-[11px]" dir="ltr">{selectedTrip.patientPhone}</p>
+                    </div>
+                    <StatusPill status={selectedTrip.status} label={t(tripStatusKeys[selectedTrip.status])} />
+                  </div>
 
-            {/* Location Sharing Box */}
-            <Card className="p-3.5 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-fg">مشاركة موقعك المباشر مع العيادة</p>
-                <p className="text-[11px] text-muted">لتتبع وصول السيارة إلى المريض في الوقت الفعلي</p>
-                {locMsg && <p className="text-[11px] text-emerald-600 mt-1 font-medium">{locMsg}</p>}
-              </div>
-              <Button
-                size="sm"
-                variant={sharing ? 'danger' : 'secondary'}
-                onClick={() => {
-                  setSharing((s) => !s);
-                  setLocMsg('');
-                }}
-              >
-                {sharing ? 'إيقاف المشاركة' : 'مشاركة الآن'}
-              </Button>
-            </Card>
+                  {/* Actions for Transfer */}
+                  <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                    {NEXT_ACTION[selectedTrip.status] && (
+                      <Button
+                        size="sm"
+                        variant={NEXT_ACTION[selectedTrip.status]?.variant}
+                        className="w-full font-bold text-xs py-1.5"
+                        onClick={() => advanceTrip(selectedTrip)}
+                      >
+                        {NEXT_ACTION[selectedTrip.status]?.label}
+                      </Button>
+                    )}
+                    <Button size="sm" variant="success" className="w-full text-xs py-1.5" onClick={() => setWaTrip(selectedTrip)}>
+                      💬 واتساب
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Location Sharing Box (Compact) */}
+              <Card className="p-2.5 flex items-center justify-between text-xs">
+                <div className="min-w-0 me-2">
+                  <p className="text-xs font-bold text-fg truncate">مشاركة الموقع المباشر مع العيادة</p>
+                  <p className="text-[10px] text-muted truncate">لتتبع السيارة في الوقت الفعلي</p>
+                  {locMsg && <p className="text-[10px] text-emerald-600 font-medium">{locMsg}</p>}
+                </div>
+                <Button
+                  size="sm"
+                  variant={sharing ? 'danger' : 'secondary'}
+                  className="text-xs shrink-0 py-1 px-2.5"
+                  onClick={() => {
+                    setSharing((s) => !s);
+                    setLocMsg('');
+                  }}
+                >
+                  {sharing ? 'إيقاف' : 'مشاركة'}
+                </Button>
+              </Card>
+            </div>
+
+            {/* ─── Column 2: Map Canvas (Full width on Mobile, 7 cols on Desktop) ─── */}
+            <div className="md:col-span-7">
+              <Card className="overflow-hidden p-1.5 shadow-card">
+                <div className="h-[280px] sm:h-[350px] md:h-[520px] w-full">
+                  <MapView
+                    points={points}
+                    route={route}
+                    height="100%"
+                    center={origCoord ?? mapConfig.defaultCenter}
+                    zoom={13}
+                    trafficKey={mapConfig.tomtomTraffic ? mapConfig.tomtomApiKey : undefined}
+                  />
+                </div>
+              </Card>
+            </div>
           </div>
         )}
 
