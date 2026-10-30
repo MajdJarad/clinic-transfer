@@ -25,16 +25,12 @@ ENV NODE_ENV=production
 ENV PORT=3000
 
 COPY --from=builder /app/server/package*.json ./server/
-RUN cd server && npm ci --only=production
-
+COPY --from=builder /app/server/node_modules ./server/node_modules
 COPY --from=builder /app/server/dist ./server/dist
 COPY --from=builder /app/server/prisma ./server/prisma
 COPY --from=builder /app/web/dist ./web/dist
 
-# Ensure database directory and initial seed if needed
 WORKDIR /app/server
-RUN npx prisma generate
-
 EXPOSE 3000
 
 CMD ["node", "dist/index.js"]
