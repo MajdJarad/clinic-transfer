@@ -1,0 +1,117 @@
+// Clinic patient transfer management - data model
+// SQLite for local development (easy to migrate to PostgreSQL later).
+// Note: SQLite does not support Prisma enums, so enum-like fields are strings
+// validated in the API layer (see src/constants.ts).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  role         String   @default("COORDINATOR")
+  active       Boolean  @default(true)
+  driver       Driver?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Driver {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseNo       String?
+  status          String   @default("AVAILABLE")
+  lat             Float?
+  lng             Float?
+  lastSeen        DateTime?
+  // Optional Traccar device id (hardware tracker in the car, or the phone's Traccar Client).
+  traccarDeviceId String?
+  vehicle         Vehicle?
+  trips           Trip[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Vehicle {
+  id          String       @id @default(cuid())
+  make        String
+  model       String
+  plate       String       @unique
+  color       String?
+  capacity    Int          @default(4)
+  status      String       @default("ACTIVE")
+  driverId    String?      @unique
+  driver      Driver?      @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  trips       Trip[]
+  maintenance Maintenance[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Patient {
+  id         String   @id @default(cuid())
+  name       String
+  phone      String
+  nationalId String?
+  notes      String?
+  trips      Trip[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Trip {
+  id              String   @id @default(cuid())
+  patientName     String   @default("")
+  patientPhone    String   @default("")
+  patientId       String?
+  patient         Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  driverId        String?
+  driver          Driver?  @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  vehicleId       String?
+  vehicle         Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  type            String
+  origin          String
+  destination     String
+  originLat       Float?
+  originLng       Float?
+  destLat         Float?
+  destLng         Float?
+  scheduledAt     DateTime
+  endAt           DateTime?
+  status          String   @default("SCHEDULED")
+  notes           String?
+  calendarEventId String?
+  createdById     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([scheduledAt])
+  @@index([driverId])
+  @@index([status])
+}
+
+model Maintenance {
+  id          String    @id @default(cuid())
+  vehicleId   String
+  vehicle     Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  type        String
+  status      String    @default("SCHEDULED")
+  title       String
+  description String?
+  cost        Float?
+  odometer    Int?
+  scheduledAt DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}

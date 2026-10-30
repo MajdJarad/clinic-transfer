@@ -1,0 +1,18 @@
+{
+  "name": "clinic-patient-transfer",
+  "version": "1.0.0",
+  "description": "Clinic Patient Transfer Management System with Driver App, Google Calendar, and Real-Time Navigation",
+  "private": true,
+  "scripts": {
+    "install:all": "npm --prefix web install && npm --prefix server install",
+    "build:web": "npm --prefix web run build",
+    "build:server": "npm --prefix server run prisma:generate && npm --prefix server run build",
+    "build": "npm --prefix web install && npm --prefix web run build && npm --prefix server install && npm --prefix server run prisma:generate && npm --prefix server run build",
+    "start": "node server/dist/index.js",
+    "db:push": "npm --prefix server run db:push",
+    "db:seed": "npm --prefix server run db:seed"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
