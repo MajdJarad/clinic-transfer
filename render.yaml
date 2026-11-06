@@ -15,3 +15,5 @@ services:
         value: file:./dev.db
       - key: JWT_SECRET
         generateValue: true
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false # set the value in the Render dashboard, never commit it

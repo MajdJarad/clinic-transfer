@@ -4,18 +4,14 @@ import { api } from './api';
 export interface MapConfig {
   mapProvider: string;
   googleMapsApiKey: string;
-  tomtomTraffic: boolean;
-  tomtomApiKey: string;
   traccarEnabled: boolean;
   defaultCenter: { lat: number; lng: number };
   defaultZoom: number;
 }
 
 const FALLBACK: MapConfig = {
-  mapProvider: 'osm',
+  mapProvider: 'google',
   googleMapsApiKey: '',
-  tomtomTraffic: false,
-  tomtomApiKey: '',
   traccarEnabled: false,
   defaultCenter: { lat: 41.0082, lng: 28.9784 },
   defaultZoom: 11,

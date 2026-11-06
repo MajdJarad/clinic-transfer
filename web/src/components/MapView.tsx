@@ -1,7 +1,15 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { useI18n } from '../i18n';
+import { useMapConfig } from '../config';
+import {
+  createHtmlMarker,
+  escapeHtml,
+  ISTANBUL_CENTER,
+  loadGoogleMaps,
+  pinHtml,
+  type HtmlMarker,
+} from '../lib/googleMaps';
 
 export interface MapPoint {
   id: string;
@@ -19,25 +27,7 @@ interface MapViewProps {
   height?: number | string;
   center?: { lat: number; lng: number };
   zoom?: number;
-  trafficKey?: string;
   fit?: boolean;
-}
-
-function pinIcon(point: MapPoint, dir: string) {
-  const color = point.color ?? '#2563eb';
-  const label = `${point.title}${point.subtitle ? ` - ${point.subtitle}` : ''}`;
-  return L.divIcon({
-    className: 'transfer-pin',
-    html: `<div dir="${dir}" style="transform:translate(-50%,-100%)">
-        <div style="display:flex;align-items:center;gap:6px;background:${color};color:#fff;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);border:2px solid #fff">
-          <span style="width:6px;height:6px;border-radius:999px;background:#fff;display:inline-block"></span>
-          <span>${label}</span>
-        </div>
-        <div style="width:2px;height:10px;background:${color};margin:0 auto"></div>
-      </div>`,
-    iconSize: [0, 0],
-    iconAnchor: [0, 0],
-  });
 }
 
 export function MapView({
@@ -47,103 +37,163 @@ export function MapView({
   height = 360,
   center,
   zoom,
-  trafficKey,
   fit = true,
 }: MapViewProps) {
   const { t, dir } = useI18n();
+  const { googleMapsApiKey } = useMapConfig();
   const divRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const pointsLayer = useRef<L.LayerGroup | null>(null);
-  const routeLayer = useRef<L.Polyline | null>(null);
-  const trafficLayer = useRef<L.TileLayer | null>(null);
+  const mapRef = useRef<any>(null);
+  const gRef = useRef<any>(null);
+  const markersRef = useRef<HtmlMarker[]>([]);
+  const routeRef = useRef<any>(null);
+  const trafficRef = useRef<any>(null);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState('');
   const [showTraffic, setShowTraffic] = useState(false);
+
+  // Load the Google Maps script.
+  useEffect(() => {
+    if (!googleMapsApiKey) return;
+    let cancelled = false;
+    loadGoogleMaps(googleMapsApiKey)
+      .then((g) => {
+        if (cancelled) return;
+        gRef.current = g;
+        setReady(true);
+      })
+      .catch((e) => !cancelled && setError(e.message));
+    return () => {
+      cancelled = true;
+    };
+  }, [googleMapsApiKey]);
 
   // Initialise the map once.
   useEffect(() => {
-    if (!divRef.current || mapRef.current) return;
-    const map = L.map(divRef.current, {
-      center: center ? [center.lat, center.lng] : [41.0082, 28.9784],
+    if (!ready || !divRef.current || mapRef.current) return;
+    const g = gRef.current;
+    mapRef.current = new g.maps.Map(divRef.current, {
+      center: center ?? ISTANBUL_CENTER,
       zoom: zoom ?? 11,
-      zoomControl: true,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      gestureHandling: 'greedy',
     });
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors',
-    }).addTo(map);
-    pointsLayer.current = L.layerGroup().addTo(map);
-    mapRef.current = map;
-    setTimeout(() => map.invalidateSize(), 0);
-    return () => {
-      map.remove();
-      mapRef.current = null;
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [ready]);
 
   // Markers.
   useEffect(() => {
     const map = mapRef.current;
-    const layer = pointsLayer.current;
-    if (!map || !layer) return;
-    layer.clearLayers();
-    points.forEach((p) => {
-      const m = L.marker([p.lat, p.lng], { icon: pinIcon(p, dir) });
-      if (p.subtitle) m.bindPopup(`<b>${p.title}</b><br/>${p.subtitle}`);
-      layer.addLayer(m);
+    const g = gRef.current;
+    if (!map || !g) return;
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = points.map((p) => {
+      const info = p.subtitle
+        ? new g.maps.InfoWindow({
+            content: `<b>${escapeHtml(p.title)}</b><br/>${escapeHtml(p.subtitle)}`,
+          })
+        : null;
+      const marker = createHtmlMarker(
+        g,
+        { lat: p.lat, lng: p.lng },
+        pinHtml(p.color ?? '#2563eb', `${p.title}${p.subtitle ? ` - ${p.subtitle}` : ''}`, undefined, dir),
+        info
+          ? () => {
+              info.setPosition({ lat: p.lat, lng: p.lng });
+              info.open(map);
+            }
+          : undefined,
+      );
+      marker.setMap(map);
+      return marker;
     });
     if (fit && points.length > 0) {
-      const bounds = L.latLngBounds(points.map((p) => [p.lat, p.lng] as [number, number]));
-      if (points.length === 1) map.setView([points[0].lat, points[0].lng], 14);
-      else map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+      if (points.length === 1) {
+        map.setCenter({ lat: points[0].lat, lng: points[0].lng });
+        map.setZoom(14);
+      } else {
+        const bounds = new g.maps.LatLngBounds();
+        points.forEach((p) => bounds.extend({ lat: p.lat, lng: p.lng }));
+        map.fitBounds(bounds, 50);
+      }
     }
-  }, [points, dir, fit]);
+  }, [ready, points, dir, fit]);
 
   // Route polyline.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
-    if (routeLayer.current) {
-      routeLayer.current.remove();
-      routeLayer.current = null;
-    }
+    const g = gRef.current;
+    if (!map || !g) return;
+    routeRef.current?.setMap(null);
+    routeRef.current = null;
     if (route && route.length > 1) {
-      const latlngs = route.map((c) => (routeLatLng ? [c[0], c[1]] : [c[1], c[0]]) as [number, number]);
-      routeLayer.current = L.polyline(latlngs, { color: '#2563eb', weight: 5, opacity: 0.85 }).addTo(map);
-      map.fitBounds(routeLayer.current.getBounds(), { padding: [40, 40] });
+      const path = route.map((c) => ({
+        lat: routeLatLng ? c[0] : c[1],
+        lng: routeLatLng ? c[1] : c[0],
+      }));
+      routeRef.current = new g.maps.Polyline({
+        path,
+        strokeColor: '#2563eb',
+        strokeOpacity: 0.9,
+        strokeWeight: 5,
+        map,
+      });
+      const bounds = new g.maps.LatLngBounds();
+      path.forEach((p) => bounds.extend(p));
+      map.fitBounds(bounds, 40);
     }
-  }, [route, routeLatLng]);
+  }, [ready, route, routeLatLng]);
 
-  // TomTom traffic overlay (optional).
+  // Google live traffic layer.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
-    if (trafficLayer.current) {
-      trafficLayer.current.remove();
-      trafficLayer.current = null;
+    const g = gRef.current;
+    if (!map || !g) return;
+    if (showTraffic) {
+      if (!trafficRef.current) trafficRef.current = new g.maps.TrafficLayer();
+      trafficRef.current.setMap(map);
+    } else {
+      trafficRef.current?.setMap(null);
     }
-    if (showTraffic && trafficKey) {
-      trafficLayer.current = L.tileLayer(
-        `https://api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=${encodeURIComponent(trafficKey)}`,
-        { opacity: 0.7, maxZoom: 22 },
-      ).addTo(map);
-    }
-  }, [showTraffic, trafficKey]);
+  }, [ready, showTraffic]);
+
+  if (!googleMapsApiKey) {
+    return (
+      <div
+        className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-surface2 p-6 text-center text-sm text-muted"
+        style={{ height }}
+      >
+        <p className="font-medium text-fg">{t('map.notEnabled')}</p>
+        <p>{t('map.addKeyHint')}</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        className="flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+        style={{ height }}
+      >
+        {t('map.loadError', { msg: error })}
+      </div>
+    );
+  }
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border" style={{ height }}>
       <div ref={divRef} className="h-full w-full" />
-      {trafficKey && (
-        <button
-          type="button"
-          onClick={() => setShowTraffic((s) => !s)}
-          className={`absolute top-3 z-[1000] rounded-lg px-3 py-1.5 text-xs font-medium shadow ${
-            showTraffic ? 'bg-brand-600 text-white' : 'bg-surface/95 text-fg'
-          }`}
-          style={{ insetInlineEnd: '0.75rem' }}
-        >
-          {t('map.traffic')}
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={() => setShowTraffic((s) => !s)}
+        className={`absolute top-3 z-[5] rounded-lg px-3 py-1.5 text-xs font-medium shadow ${
+          showTraffic ? 'bg-brand-600 text-white' : 'bg-surface/95 text-fg'
+        }`}
+        style={{ insetInlineEnd: '0.75rem' }}
+      >
+        {t('map.traffic')}
+      </button>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import fs from 'fs';
 import cors from 'cors';
 import express from 'express';
 import morgan from 'morgan';
-import { env, tomtomEnabled, traccarEnabled } from './env';
+import { env, googleMapsEnabled, traccarEnabled } from './env';
 import { errorHandler, notFoundHandler } from './lib/http';
 import { authRouter } from './routes/auth';
 import { usersRouter } from './routes/users';
@@ -24,14 +24,12 @@ app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'transfer-server' }));
 
 // Public runtime config for the web client.
-// The map stack is OpenStreetMap based (Leaflet) and needs no API key.
-// TomTom traffic and Traccar tracking are optional and enabled via env vars.
+// Maps are rendered with Google Maps (GOOGLE_MAPS_API_KEY). Routing and place
+// search also go through Google when the key is set (see routes/geo.ts).
 app.get('/api/config', (_req, res) => {
   res.json({
-    mapProvider: 'osm',
+    mapProvider: 'google',
     googleMapsApiKey: env.googleMapsApiKey,
-    tomtomTraffic: tomtomEnabled,
-    tomtomApiKey: env.tomtomApiKey,
     traccarEnabled,
     defaultCenter: { lat: env.mapCenterLat, lng: env.mapCenterLng },
     defaultZoom: env.mapCenterZoom,

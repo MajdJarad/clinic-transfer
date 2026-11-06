@@ -4,6 +4,7 @@ import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
 import { useMapConfig } from '../config';
 import { MapView, type MapPoint } from '../components/MapView';
+import { DEFAULT_DESTINATION, DEFAULT_ORIGIN } from '../lib/googleMaps';
 import { WhatsAppModal } from '../components/WhatsAppModal';
 import { ThemeToggle } from '../components/Controls';
 import {
@@ -66,10 +67,10 @@ export function DriverApp() {
   const [calQuery, setCalQuery] = useState('');
 
   // ─── Google Maps Navigation State (Fully Editable Waypoints) ───
-  const [origin, setOrigin] = useState<string>('مطار الملك خالد الدولي');
-  const [destination, setDestination] = useState<string>('عيادة النخبة الطبية');
-  const [origCoord, setOrigCoord] = useState<{ lat: number; lng: number } | null>({ lat: 24.9576, lng: 46.6988 });
-  const [destCoord, setDestCoord] = useState<{ lat: number; lng: number } | null>({ lat: 24.7136, lng: 46.6753 });
+  const [origin, setOrigin] = useState<string>(DEFAULT_ORIGIN.label);
+  const [destination, setDestination] = useState<string>(DEFAULT_DESTINATION.label);
+  const [origCoord, setOrigCoord] = useState<{ lat: number; lng: number } | null>(DEFAULT_ORIGIN.coord);
+  const [destCoord, setDestCoord] = useState<{ lat: number; lng: number } | null>(DEFAULT_DESTINATION.coord);
   const [travelMode, setTravelMode] = useState<'driving' | 'walking'>('driving');
   const [route, setRoute] = useState<[number, number][] | null>(null);
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
@@ -179,10 +180,10 @@ export function DriverApp() {
     setSelectedTrip(tr);
     setOrigin(tr.origin);
     setDestination(tr.destination);
-    const oLat = tr.originLat ?? 24.9576;
-    const oLng = tr.originLng ?? 46.6988;
-    const dLat = tr.destLat ?? 24.7136;
-    const dLng = tr.destLng ?? 46.6753;
+    const oLat = tr.originLat ?? DEFAULT_ORIGIN.coord.lat;
+    const oLng = tr.originLng ?? DEFAULT_ORIGIN.coord.lng;
+    const dLat = tr.destLat ?? DEFAULT_DESTINATION.coord.lat;
+    const dLng = tr.destLng ?? DEFAULT_DESTINATION.coord.lng;
     setOrigCoord({ lat: oLat, lng: oLng });
     setDestCoord({ lat: dLat, lng: dLng });
     setActiveTab('navigation');
@@ -255,7 +256,7 @@ export function DriverApp() {
     setCalculatingRoute(true);
 
     api.geo
-      .route(origCoord, destCoord)
+      .route(origCoord, destCoord, travelMode)
       .then((res) => {
         if (cancelled) return;
         if (res.geometry?.coordinates) {
@@ -290,7 +291,7 @@ export function DriverApp() {
     return () => {
       cancelled = true;
     };
-  }, [origCoord, destCoord]);
+  }, [origCoord, destCoord, travelMode]);
 
   // ─── Send Position to Server ───
   const sendPosition = useCallback(() => {
@@ -803,7 +804,6 @@ export function DriverApp() {
                     height="100%"
                     center={origCoord ?? mapConfig.defaultCenter}
                     zoom={13}
-                    trafficKey={mapConfig.tomtomTraffic ? mapConfig.tomtomApiKey : undefined}
                   />
                 </div>
               </Card>

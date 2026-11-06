@@ -1,47 +1,42 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { api } from '../api';
 import { useMapConfig } from '../config';
+import {
+  createHtmlMarker,
+  DEFAULT_DESTINATION,
+  DEFAULT_ORIGIN,
+  ISTANBUL_CENTER,
+  loadGoogleMaps,
+  pinHtml,
+} from '../lib/googleMaps';
 
-// Map Tile Layers
-const TILE_LAYERS = {
-  streets: {
-    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-    name: 'خريطة شوارع (Google Style)',
-    attribution: '&copy; OpenStreetMap contributors',
-  },
-  satellite: {
-    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    name: 'قمر صناعي (Satellite)',
-    attribution: '&copy; Esri & NASA',
-  },
-  terrain: {
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    name: 'تضاريس (Terrain)',
-    attribution: '&copy; CARTO',
-  },
+// Google Maps base map types
+const MAP_TYPES = {
+  roadmap: { name: 'خريطة شوارع' },
+  satellite: { name: 'قمر صناعي (Satellite)' },
+  terrain: { name: 'تضاريس (Terrain)' },
 };
 
-type TileType = keyof typeof TILE_LAYERS;
+type MapTypeKey = keyof typeof MAP_TYPES;
 
 export function MapPage() {
   const mapConfig = useMapConfig();
   const [searchParams] = useSearchParams();
 
   // Waypoints State
-  const [origin, setOrigin] = useState<string>(() => searchParams.get('origin') || 'مطار الملك خالد الدولي');
-  const [destination, setDestination] = useState<string>(() => searchParams.get('destination') || 'عيادة النخبة الطبية');
+  const [origin, setOrigin] = useState<string>(() => searchParams.get('origin') || DEFAULT_ORIGIN.label);
+  const [destination, setDestination] = useState<string>(() => searchParams.get('destination') || DEFAULT_DESTINATION.label);
   const [origCoords, setOrigCoords] = useState<{ lat: number; lng: number } | null>(() => {
     const lat = searchParams.get('origLat');
     const lng = searchParams.get('origLng');
-    return lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : { lat: 24.9576, lng: 46.6988 };
+    return lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : DEFAULT_ORIGIN.coord;
   });
   const [destCoords, setDestCoords] = useState<{ lat: number; lng: number } | null>(() => {
     const lat = searchParams.get('destLat');
     const lng = searchParams.get('destLng');
-    return lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : { lat: 24.7136, lng: 46.6753 };
+    return lat && lng ? { lat: parseFloat(lat), lng: parseFloat(lng) } : DEFAULT_DESTINATION.coord;
   });
 
   // Transfer Meta info (when launched from a Calendar Trip)
@@ -53,7 +48,7 @@ export function MapPage() {
   const [travelMode, setTravelMode] = useState<'driving' | 'walking' | 'bicycling'>('driving');
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
   const [calculating, setCalculating] = useState(false);
-  const [activeLayer, setActiveLayer] = useState<TileType>('streets');
+  const [activeLayer, setActiveLayer] = useState<MapTypeKey>('roadmap');
   const [showTraffic, setShowTraffic] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showLayerMenu, setShowLayerMenu] = useState(false);
@@ -65,11 +60,12 @@ export function MapPage() {
 
   // Map Refs
   const mapDivRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const tileRef = useRef<L.TileLayer | null>(null);
-  const markersRef = useRef<L.LayerGroup | null>(null);
-  const routeRef = useRef<L.Polyline | null>(null);
-  const trafficRef = useRef<L.TileLayer | null>(null);
+  const mapRef = useRef<any>(null);
+  const gRef = useRef<any>(null);
+  const routeRef = useRef<any>(null);
+  const trafficRef = useRef<any>(null);
+  const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   // Sync state if searchParams change
   useEffect(() => {
@@ -86,159 +82,130 @@ export function MapPage() {
     if (dLat && dLng) setDestCoords({ lat: parseFloat(dLat), lng: parseFloat(dLng) });
   }, [searchParams]);
 
-  // Initialise Leaflet Map
+  // Load the Google Maps script
   useEffect(() => {
-    if (!mapDivRef.current || mapRef.current) return;
-
-    const centerLat = origCoords?.lat ?? mapConfig.defaultCenter.lat ?? 24.7136;
-    const centerLng = origCoords?.lng ?? mapConfig.defaultCenter.lng ?? 46.6753;
-
-    const map = L.map(mapDivRef.current, {
-      center: [centerLat, centerLng],
-      zoom: 12,
-      zoomControl: false,
-    });
-
-    const tile = L.tileLayer(TILE_LAYERS[activeLayer].url, {
-      maxZoom: 19,
-      attribution: TILE_LAYERS[activeLayer].attribution,
-    }).addTo(map);
-
-    tileRef.current = tile;
-    markersRef.current = L.layerGroup().addTo(map);
-    mapRef.current = map;
-
+    if (!mapConfig.googleMapsApiKey) return;
+    let cancelled = false;
+    loadGoogleMaps(mapConfig.googleMapsApiKey)
+      .then((g) => {
+        if (cancelled) return;
+        gRef.current = g;
+        setReady(true);
+      })
+      .catch((e) => !cancelled && setLoadError(e.message));
     return () => {
-      map.remove();
-      mapRef.current = null;
+      cancelled = true;
     };
-  }, []);
+  }, [mapConfig.googleMapsApiKey]);
 
-  // Handle Layer Changes
+  // Initialise the Google map (custom controls are rendered below, so the default UI is off)
+  useEffect(() => {
+    if (!ready || !mapDivRef.current || mapRef.current) return;
+    const g = gRef.current;
+    mapRef.current = new g.maps.Map(mapDivRef.current, {
+      center: origCoords ?? mapConfig.defaultCenter ?? ISTANBUL_CENTER,
+      zoom: 12,
+      disableDefaultUI: true,
+      gestureHandling: 'greedy',
+      clickableIcons: false,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
+
+  // Base map type (roadmap / satellite / terrain)
+  useEffect(() => {
+    mapRef.current?.setMapTypeId(activeLayer);
+  }, [ready, activeLayer]);
+
+  // Google live traffic layer
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
-    if (tileRef.current) tileRef.current.remove();
-    tileRef.current = L.tileLayer(TILE_LAYERS[activeLayer].url, {
-      maxZoom: 19,
-      attribution: TILE_LAYERS[activeLayer].attribution,
-    }).addTo(map);
-  }, [activeLayer]);
+    const g = gRef.current;
+    if (!map || !g) return;
+    if (showTraffic) {
+      if (!trafficRef.current) trafficRef.current = new g.maps.TrafficLayer();
+      trafficRef.current.setMap(map);
+    } else {
+      trafficRef.current?.setMap(null);
+    }
+  }, [ready, showTraffic]);
 
-  // Handle Traffic Overlay
+  // The map must be told when its container changes size (fullscreen toggle)
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
-    if (trafficRef.current) {
-      trafficRef.current.remove();
-      trafficRef.current = null;
-    }
-    if (showTraffic && mapConfig.tomtomApiKey) {
-      trafficRef.current = L.tileLayer(
-        `https://api.tomtom.com/traffic/map/4/tile/flow/relative0/{z}/{x}/{y}.png?key=${encodeURIComponent(
-          mapConfig.tomtomApiKey
-        )}`,
-        { opacity: 0.7, maxZoom: 22 }
-      ).addTo(map);
-    }
-  }, [showTraffic, mapConfig.tomtomApiKey]);
+    const g = gRef.current;
+    if (!map || !g) return;
+    const id = setTimeout(() => g.maps.event.trigger(map, 'resize'), 50);
+    return () => clearTimeout(id);
+  }, [isFullscreen, ready]);
 
-  // Draw Route & Google Waypoint Pins
+  // Draw route & waypoint pins. Everything added here is removed in the cleanup.
   useEffect(() => {
     const map = mapRef.current;
-    const markers = markersRef.current;
-    if (!map || !markers) return;
+    const g = gRef.current;
+    if (!map || !g || !origCoords || !destCoords) return;
 
-    markers.clearLayers();
-    if (routeRef.current) {
-      routeRef.current.remove();
-      routeRef.current = null;
-    }
-
-    if (!origCoords || !destCoords) return;
-
+    let cancelled = false;
+    const overlays: any[] = [];
     setCalculating(true);
 
-    // Google Maps Start Pin (Green Circle A)
-    const pinA = L.divIcon({
-      className: 'gmap-pin-origin',
-      html: `
-        <div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%)">
-          <div style="background:#137333;color:#fff;font-weight:bold;font-size:12px;padding:5px 10px;border-radius:20px;box-shadow:0 4px 14px rgba(0,0,0,0.35);border:2px solid #fff;display:flex;align-items:center;gap:6px;white-space:nowrap">
-            <span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:#fff;color:#137333;text-align:center;line-height:18px;font-size:11px;font-weight:900">A</span>
-            <span style="font-weight:600">${origin || 'نقطة الانطلاق'}</span>
-          </div>
-          <div style="width:2px;height:12px;background:#137333"></div>
-        </div>
-      `,
-      iconSize: [0, 0],
-      iconAnchor: [0, 0],
-    });
+    // Start pin (green A)
+    const pinA = createHtmlMarker(g, origCoords, pinHtml('#137333', origin || 'نقطة الانطلاق', 'A'));
+    // Destination pin (red B)
+    const pinB = createHtmlMarker(g, destCoords, pinHtml('#d93025', destination || 'الوجهة', 'B'));
+    pinA.setMap(map);
+    pinB.setMap(map);
+    overlays.push(pinA, pinB);
 
-    // Google Maps Destination Pin (Red Teardrop B)
-    const pinB = L.divIcon({
-      className: 'gmap-pin-dest',
-      html: `
-        <div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%)">
-          <div style="background:#d93025;color:#fff;font-weight:bold;font-size:12px;padding:5px 10px;border-radius:20px;box-shadow:0 4px 14px rgba(0,0,0,0.35);border:2px solid #fff;display:flex;align-items:center;gap:6px;white-space:nowrap">
-            <span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:#fff;color:#d93025;text-align:center;line-height:18px;font-size:11px;font-weight:900">B</span>
-            <span style="font-weight:600">${destination || 'الوجهة'}</span>
-          </div>
-          <div style="width:2px;height:12px;background:#d93025"></div>
-        </div>
-      `,
-      iconSize: [0, 0],
-      iconAnchor: [0, 0],
-    });
+    const fitTo = (path: { lat: number; lng: number }[], padding: number) => {
+      const bounds = new g.maps.LatLngBounds();
+      path.forEach((p) => bounds.extend(p));
+      // On phones the directions card covers the top of the map: leave room for it.
+      const top = window.innerWidth < 640 ? 300 : padding;
+      map.fitBounds(bounds, { top, right: padding, bottom: padding, left: padding });
+    };
 
-    L.marker([origCoords.lat, origCoords.lng], { icon: pinA }).addTo(markers);
-    L.marker([destCoords.lat, destCoords.lng], { icon: pinB }).addTo(markers);
-
-    // Call Real Routing Engine (OSRM / API)
+    // Real route from the server (Google Routes API)
     api.geo
-      .route(origCoords, destCoords)
+      .route(origCoords, destCoords, travelMode === 'bicycling' ? 'driving' : travelMode)
       .then((res) => {
-        if (res.geometry?.coordinates) {
-          const latlngs = res.geometry.coordinates.map((c) => [c[1], c[0]] as [number, number]);
+        if (cancelled || !res.geometry?.coordinates) return;
+        const path = res.geometry.coordinates.map((c) => ({ lat: c[1], lng: c[0] }));
 
-          // Dark outer casing for Google Maps authentic border look
-          L.polyline(latlngs, {
-            color: '#1557bf',
-            weight: 8,
-            opacity: 0.9,
-          }).addTo(markers);
+        // Darker outer casing + signature blue line
+        overlays.push(
+          new g.maps.Polyline({ path, strokeColor: '#1557bf', strokeOpacity: 0.9, strokeWeight: 8, map }),
+        );
+        const line = new g.maps.Polyline({ path, strokeColor: '#1a73e8', strokeOpacity: 1, strokeWeight: 5, map });
+        overlays.push(line);
+        routeRef.current = line;
+        fitTo(path, 100);
 
-          // Google Maps signature blue route line
-          const polyline = L.polyline(latlngs, {
-            color: '#1a73e8',
-            weight: 5,
-            opacity: 1,
-          }).addTo(markers);
-
-          routeRef.current = polyline;
-          map.fitBounds(polyline.getBounds(), { padding: [100, 100] });
-
-          setRouteInfo({
-            distance: Math.round((res.distance / 1000) * 10) / 10,
-            duration: Math.round(res.duration / 60),
-          });
-        }
+        setRouteInfo({
+          distance: Math.round((res.distance / 1000) * 10) / 10,
+          duration: Math.round(res.duration / 60),
+        });
       })
       .catch(() => {
-        // Fallback line
-        const latlngs: [number, number][] = [
-          [origCoords.lat, origCoords.lng],
-          [destCoords.lat, destCoords.lng],
-        ];
-        const polyline = L.polyline(latlngs, {
-          color: '#1a73e8',
-          weight: 5,
-          dashArray: '8, 8',
-        }).addTo(markers);
-        routeRef.current = polyline;
-        map.fitBounds(L.latLngBounds(latlngs), { padding: [100, 100] });
+        if (cancelled) return;
+        // Fallback: dashed straight line + estimated distance
+        const path = [origCoords, destCoords];
+        const line = new g.maps.Polyline({
+          path,
+          strokeOpacity: 0,
+          icons: [
+            {
+              icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, strokeColor: '#1a73e8', scale: 3 },
+              offset: '0',
+              repeat: '14px',
+            },
+          ],
+          map,
+        });
+        overlays.push(line);
+        routeRef.current = line;
+        fitTo(path, 100);
 
-        // Estimated math distance
         const R = 6371;
         const dLat = ((destCoords.lat - origCoords.lat) * Math.PI) / 180;
         const dLon = ((destCoords.lng - origCoords.lng) * Math.PI) / 180;
@@ -254,8 +221,16 @@ export function MapPage() {
           duration: Math.max(Math.round(d * 1.6), 5),
         });
       })
-      .finally(() => setCalculating(false));
-  }, [origCoords, destCoords, origin, destination]);
+      .finally(() => {
+        if (!cancelled) setCalculating(false);
+      });
+
+    return () => {
+      cancelled = true;
+      overlays.forEach((o) => o.setMap(null));
+      routeRef.current = null;
+    };
+  }, [ready, origCoords, destCoords, origin, destination, travelMode]);
 
   // Swap Origin and Destination
   const swapWaypoints = () => {
@@ -307,9 +282,17 @@ export function MapPage() {
   };
 
   const recenterRoute = () => {
-    if (routeRef.current && mapRef.current) {
-      mapRef.current.fitBounds(routeRef.current.getBounds(), { padding: [80, 80] });
-    }
+    const g = gRef.current;
+    const map = mapRef.current;
+    if (!g || !map || !routeRef.current) return;
+    const bounds = new g.maps.LatLngBounds();
+    routeRef.current.getPath().forEach((p: any) => bounds.extend(p));
+    map.fitBounds(bounds, 80);
+  };
+
+  const zoomBy = (delta: number) => {
+    const map = mapRef.current;
+    if (map) map.setZoom((map.getZoom() ?? 12) + delta);
   };
 
   return (
@@ -319,7 +302,15 @@ export function MapPage() {
       }`}
     >
       {/* ─── Map Canvas ─── */}
-      <div ref={mapDivRef} className="h-full w-full z-0 cursor-grab active:cursor-grabbing" />
+      <div ref={mapDivRef} className="h-full w-full z-0" />
+      {(!mapConfig.googleMapsApiKey || loadError) && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-surface2 p-6 text-center text-sm text-muted">
+          <p className="font-medium text-fg">
+            {loadError ? `تعذّر تحميل خريطة Google: ${loadError}` : 'خريطة Google غير مفعّلة بعد'}
+          </p>
+          {!mapConfig.googleMapsApiKey && <p>أضف مفتاح Google Maps في GOOGLE_MAPS_API_KEY على السيرفر ليظهر المسار.</p>}
+        </div>
+      )}
 
       {/* ─── Google Maps Style Floating Directions Widget ─── */}
       <div className="absolute top-2.5 inset-x-2 sm:inset-x-auto sm:top-4 sm:start-4 z-30 sm:w-80 md:w-96 flex flex-col gap-2 max-w-full">
@@ -537,13 +528,13 @@ export function MapPage() {
             className="flex h-9 w-9 sm:h-auto sm:w-auto items-center justify-center sm:justify-start gap-1.5 rounded-xl bg-surface/95 p-2 sm:px-2.5 sm:py-1.5 text-xs font-semibold text-fg shadow-xl backdrop-blur-md border border-border hover:bg-surface2 transition"
           >
             <span className="text-base sm:text-sm">🗺️</span>
-            <span className="hidden sm:inline">{TILE_LAYERS[activeLayer].name}</span>
+            <span className="hidden sm:inline">{MAP_TYPES[activeLayer].name}</span>
           </button>
 
           {/* Layer Options Dropdown Menu */}
           {showLayerMenu && (
             <div className="absolute bottom-full end-0 mb-2 sm:bottom-auto sm:top-full sm:mt-2 w-48 rounded-xl bg-surface p-1 shadow-2xl backdrop-blur-md border border-border flex flex-col gap-0.5 z-40 text-xs">
-              {(Object.keys(TILE_LAYERS) as TileType[]).map((layerKey) => (
+              {(Object.keys(MAP_TYPES) as MapTypeKey[]).map((layerKey) => (
                 <button
                   key={layerKey}
                   onClick={() => {
@@ -556,10 +547,10 @@ export function MapPage() {
                       : 'text-fg hover:bg-surface2'
                   }`}
                 >
-                  {TILE_LAYERS[layerKey].name}
+                  {MAP_TYPES[layerKey].name}
                 </button>
               ))}
-              {mapConfig.tomtomApiKey && (
+              {ready && (
                 <button
                   onClick={() => {
                     setShowTraffic(!showTraffic);
@@ -600,7 +591,7 @@ export function MapPage() {
         <div className="hidden sm:flex flex-col rounded-xl bg-surface/95 shadow-xl backdrop-blur-md border border-border">
           <button
             type="button"
-            onClick={() => mapRef.current?.zoomIn()}
+            onClick={() => zoomBy(1)}
             className="h-9 w-9 p-2 text-base font-bold text-muted hover:text-fg border-b border-border transition flex items-center justify-center"
             title="تكبير"
           >
@@ -608,7 +599,7 @@ export function MapPage() {
           </button>
           <button
             type="button"
-            onClick={() => mapRef.current?.zoomOut()}
+            onClick={() => zoomBy(-1)}
             className="h-9 w-9 p-2 text-base font-bold text-muted hover:text-fg transition flex items-center justify-center"
             title="تصغير"
           >

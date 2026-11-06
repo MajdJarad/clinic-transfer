@@ -70,17 +70,15 @@ export const api = {
     request<{
       mapProvider: string;
       googleMapsApiKey: string;
-      tomtomTraffic: boolean;
-      tomtomApiKey: string;
       traccarEnabled: boolean;
       defaultCenter: { lat: number; lng: number };
       defaultZoom: number;
     }>('/config'),
 
   geo: {
-    route: (from: { lat: number; lng: number }, to: { lat: number; lng: number }) =>
+    route: (from: { lat: number; lng: number }, to: { lat: number; lng: number }, mode = 'driving') =>
       request<{ distance: number; duration: number; geometry: { type: string; coordinates: [number, number][] } }>(
-        `/geo/route?from=${from.lat},${from.lng}&to=${to.lat},${to.lng}`,
+        `/geo/route?from=${from.lat},${from.lng}&to=${to.lat},${to.lng}&mode=${mode}`,
       ),
     search: (q: string, limit = 6) =>
       request<{ label: string; lat: number; lng: number }[]>(

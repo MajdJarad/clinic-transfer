@@ -91,7 +91,6 @@ export function Dashboard() {
           height={340}
           center={mapConfig.defaultCenter}
           zoom={mapConfig.defaultZoom}
-          trafficKey={mapConfig.tomtomTraffic ? mapConfig.tomtomApiKey : undefined}
         />
         {points.length === 0 && <p className="mt-2 text-center text-xs text-muted">{t('dashboard.noLocations')}</p>}
       </Card>
