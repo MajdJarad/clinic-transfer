@@ -5,6 +5,8 @@ import { useI18n } from '../i18n';
 import { useMapConfig } from '../config';
 import { MapView, type MapPoint } from '../components/MapView';
 import { DEFAULT_DESTINATION, DEFAULT_ORIGIN } from '../lib/googleMaps';
+import { NavigationScreen } from '../components/NavigationScreen';
+import type { RouteData } from '../lib/routeNav';
 import { WhatsAppModal } from '../components/WhatsAppModal';
 import { ThemeToggle } from '../components/Controls';
 import {
@@ -73,6 +75,8 @@ export function DriverApp() {
   const [destCoord, setDestCoord] = useState<{ lat: number; lng: number } | null>(DEFAULT_DESTINATION.coord);
   const [travelMode, setTravelMode] = useState<'driving' | 'walking'>('driving');
   const [route, setRoute] = useState<[number, number][] | null>(null);
+  const [navRoute, setNavRoute] = useState<RouteData | null>(null); // full route with turn-by-turn steps
+  const [navOpen, setNavOpen] = useState(false);
   const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
   const [calculatingRoute, setCalculatingRoute] = useState(false);
   const [searchingField, setSearchingField] = useState<'origin' | 'destination' | null>(null);
@@ -248,6 +252,7 @@ export function DriverApp() {
   useEffect(() => {
     if (!origCoord || !destCoord) {
       setRoute(null);
+      setNavRoute(null);
       setRouteInfo(null);
       return;
     }
@@ -256,10 +261,11 @@ export function DriverApp() {
     setCalculatingRoute(true);
 
     api.geo
-      .route(origCoord, destCoord, travelMode)
+      .route(origCoord, destCoord, travelMode, false)
       .then((res) => {
         if (cancelled) return;
         if (res.geometry?.coordinates) {
+          setNavRoute(res.routes?.[0] ?? res);
           setRoute(res.geometry.coordinates);
           setRouteInfo({ distance: res.distance, duration: res.duration });
         }
@@ -267,6 +273,7 @@ export function DriverApp() {
       .catch(() => {
         if (!cancelled) {
           setRoute(null);
+          setNavRoute(null);
           // Fallback approximate calculation
           const R = 6371;
           const dLat = ((destCoord.lat - origCoord.lat) * Math.PI) / 180;
@@ -391,17 +398,21 @@ export function DriverApp() {
     return list;
   }, [origCoord, destCoord, origin, destination]);
 
-  // Open Direct Google Maps Navigation
-  const openInGoogleMaps = () => {
-    const o = origCoord ? `${origCoord.lat},${origCoord.lng}` : encodeURIComponent(origin);
-    const d = destCoord ? `${destCoord.lat},${destCoord.lng}` : encodeURIComponent(destination);
-    const mode = travelMode === 'walking' ? 'walking' : 'driving';
-    const url = `https://www.google.com/maps/dir/?api=1&origin=${o}&destination=${d}&travelmode=${mode}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
+  // In-app turn-by-turn navigation (live GPS when the start point is "my location", otherwise a preview)
+  const originIsGps = origin.startsWith('موقعي الحالي');
 
   return (
     <div className="min-h-screen bg-bg pb-20 md:pb-10">
+      {navOpen && navRoute && origCoord && destCoord && (
+        <NavigationScreen
+          origin={{ label: origin, coord: origCoord }}
+          destination={{ label: destination, coord: destCoord }}
+          mode={travelMode}
+          route={navRoute}
+          startWithGps={originIsGps}
+          onExit={() => setNavOpen(false)}
+        />
+      )}
       {/* ─── Driver Top Header ─── */}
       <header className="sticky top-0 z-30 bg-brand-900 px-4 py-3 text-white shadow-md">
         <div className="flex items-center justify-between gap-2">
@@ -734,11 +745,13 @@ export function DriverApp() {
                 {/* Big Google Navigation Button */}
                 <button
                   type="button"
-                  onClick={openInGoogleMaps}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-blue-600/30 transition hover:bg-blue-700 active:scale-[0.99]"
+                  onClick={() => setNavOpen(true)}
+                  disabled={!navRoute || calculatingRoute}
+                  data-testid="driver-start-nav"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-blue-600/30 transition hover:bg-blue-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span className="text-sm">🧭</span>
-                  <span>بدء الملاحة في خرائط Google</span>
+                  <span>{calculatingRoute ? 'جارٍ حساب المسار…' : 'بدء الملاحة'}</span>
                 </button>
               </Card>
 

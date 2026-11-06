@@ -10,6 +10,7 @@ import type {
   UserRecord,
   Vehicle,
 } from './types';
+import type { GeoRouteResponse } from './lib/routeNav';
 
 const TOKEN_KEY = 'transfer_token';
 const USER_KEY = 'transfer_user';
@@ -76,9 +77,18 @@ export const api = {
     }>('/config'),
 
   geo: {
-    route: (from: { lat: number; lng: number }, to: { lat: number; lng: number }, mode = 'driving') =>
-      request<{ distance: number; duration: number; geometry: { type: string; coordinates: [number, number][] } }>(
-        `/geo/route?from=${from.lat},${from.lng}&to=${to.lat},${to.lng}&mode=${mode}`,
+    // Route(s) with turn-by-turn steps. `alternatives` asks for extra route options.
+    route: (from: { lat: number; lng: number }, to: { lat: number; lng: number }, mode = 'driving', alternatives = true) =>
+      request<GeoRouteResponse>(
+        `/geo/route?from=${from.lat},${from.lng}&to=${to.lat},${to.lng}&mode=${mode}&alt=${alternatives ? 1 : 0}`,
+      ),
+    autocomplete: (q: string, session: string) =>
+      request<{ placeId: string; main: string; secondary: string }[]>(
+        `/geo/autocomplete?q=${encodeURIComponent(q)}&session=${session}`,
+      ),
+    place: (placeId: string, session: string) =>
+      request<{ label: string; name: string; lat: number; lng: number }>(
+        `/geo/place/${encodeURIComponent(placeId)}?session=${session}`,
       ),
     search: (q: string, limit = 6) =>
       request<{ label: string; lat: number; lng: number }[]>(
