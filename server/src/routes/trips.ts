@@ -227,6 +227,13 @@ tripsRouter.post(
       data: { status: 'CANCELLED' },
       include: tripInclude,
     });
+    // Same as PATCH /:id/status: a cancelled trip releases its driver.
+    if (updated.driverId) {
+      await prisma.driver.update({
+        where: { id: updated.driverId },
+        data: { status: 'AVAILABLE' },
+      });
+    }
     res.json(updated);
   }),
 );
