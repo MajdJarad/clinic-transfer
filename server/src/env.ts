@@ -23,13 +23,12 @@ export const env = {
   googleCalendarId: process.env.GOOGLE_CALENDAR_ID ?? '',
   defaultCountryCode: process.env.DEFAULT_COUNTRY_CODE ?? '966',
 
-  // --- Real map / routing / traffic (OpenStreetMap stack, no Google key needed) ---
-  // OSRM routing engine (public demo by default; point to your own for production).
+  // --- Maps ---
+  // Rendering, routing (Routes API), place search (Places API) and traffic all use
+  // GOOGLE_MAPS_API_KEY. OSRM / Nominatim are only a fallback when no key is set.
   osrmUrl: process.env.OSRM_URL ?? 'https://router.project-osrm.org',
   // Nominatim geocoding (address search) - OSM, free.
   nominatimUrl: process.env.NOMINATIM_URL ?? 'https://nominatim.openstreetmap.org',
-  // TomTom traffic-flow tiles (free tier, best Istanbul coverage). Optional.
-  tomtomApiKey: process.env.TOMTOM_API_KEY ?? '',
   // Traccar is an open-source GPS tracking server (phones + hardware trackers).
   // Optional: when set, live positions are pulled from Traccar into the app.
   traccarUrl: (process.env.TRACCAR_URL ?? '').replace(/\/$/, ''),
@@ -43,6 +42,6 @@ export const env = {
 };
 
 export const traccarEnabled = Boolean(env.traccarUrl);
-export const tomtomEnabled = Boolean(env.tomtomApiKey);
+export const googleMapsEnabled = Boolean(env.googleMapsApiKey);
 
 export const isProd = env.nodeEnv === 'production';

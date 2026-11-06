@@ -47,7 +47,6 @@ export function Tracking() {
           height={420}
           center={mapConfig.defaultCenter}
           zoom={mapConfig.defaultZoom}
-          trafficKey={mapConfig.tomtomTraffic ? mapConfig.tomtomApiKey : undefined}
         />
       </Card>
 

@@ -25,7 +25,7 @@ interface AppSettings {
   whatsappTemplate: string;
 
   // Map & Google Maps
-  mapProvider: 'osm' | 'google';
+  mapProvider: 'google';
   googleMapsApiKey: string;
   mapCenterLat: string;
   mapCenterLng: string;
@@ -51,7 +51,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 يرجى التوجه إلى السيارة. شكراً لك.`,
 
-  mapProvider: 'osm',
+  mapProvider: 'google',
   googleMapsApiKey: '',
   mapCenterLat: '41.0082',
   mapCenterLng: '28.9784',
@@ -481,35 +481,22 @@ function SettingsTab() {
             <span className="text-lg">🗺️</span>
             <div>
               <h3 className="text-sm font-bold text-fg">إعدادات الخرائط واشتراك Google Maps</h3>
-              <p className="text-xs text-muted">التبديل بين OpenStreetMap أو تفعيل Google Maps وإدخال المفتاح</p>
+              <p className="text-xs text-muted">كل الخرائط والمسارات والبحث تعمل عبر Google Maps</p>
             </div>
           </div>
           <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-            settings.mapProvider === 'google'
+            settings.googleMapsApiKey
               ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
               : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
           }`}>
-            {settings.mapProvider === 'google' ? 'Google Maps مُفعّل' : 'OpenStreetMap (مجاني)'}
+            {settings.googleMapsApiKey ? 'مفتاح محلي مُدخل' : 'المفتاح من إعدادات السيرفر'}
           </span>
         </div>
-
-        <Field label="مزود الخريطة (Map Provider)">
-          <Select
-            value={settings.mapProvider}
-            onChange={(e) => setSettings({ ...settings, mapProvider: e.target.value as 'osm' | 'google' })}
-          >
-            <option value="osm">OpenStreetMap (مجاني بالكامل - لا يحتاج اشتراك أو بطاقة)</option>
-            <option value="google">Google Maps (يتطلب مفتاح API واشتراك Google Cloud)</option>
-          </Select>
-        </Field>
 
         <div className="rounded-xl border border-border/80 bg-surface2/60 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-fg flex items-center gap-1.5">
               <span>🔑 مفتاح Google Maps API Key</span>
-              {settings.mapProvider === 'google' && (
-                <span className="text-red-400 text-[11px]">* مطلوب عند اختيار Google Maps</span>
-              )}
             </label>
             <button
               type="button"
@@ -528,7 +515,7 @@ function SettingsTab() {
             className="font-mono text-sm"
           />
           <p className="text-xs text-muted leading-relaxed">
-            للحصول على مفتاح: توجّه إلى <strong>Google Cloud Console</strong> &larr; فعّل <strong>Maps JavaScript API</strong> و <strong>Places API</strong> &larr; أنشئ مفتاح Credentials والصقه هنا.
+            للحصول على مفتاح: توجّه إلى <strong>Google Cloud Console</strong> &larr; فعّل <strong>Maps JavaScript API</strong> و <strong>Routes API</strong> و <strong>Places API (New)</strong> &larr; أنشئ مفتاح Credentials والصقه هنا.
           </p>
         </div>
 
