@@ -72,6 +72,12 @@ export function Trips() {
     load();
   };
 
+  const remove = async (trip: Trip) => {
+    await api.trips.delete(trip.id);
+    setDetailTrip(null);
+    load();
+  };
+
   const cancel = async (trip: Trip) => {
     await api.trips.cancel(trip.id);
     setDetailTrip(null);
@@ -227,6 +233,7 @@ export function Trips() {
         }}
         onStatus={changeStatus}
         onCancel={cancel}
+        onDelete={remove}
       />
 
       <Modal open={!!assignTrip} title={t('assign.title')} onClose={() => setAssignTrip(null)}>

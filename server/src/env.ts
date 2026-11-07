@@ -21,11 +21,19 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
   googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY ?? '',
   googleCalendarId: process.env.GOOGLE_CALENDAR_ID ?? '',
-  defaultCountryCode: process.env.DEFAULT_COUNTRY_CODE ?? '966',
 
   // --- Maps: everything (map, routes, place search, traffic) uses GOOGLE_MAPS_API_KEY ---
   // Optional: a Google Cloud *Map ID* (vector map) enables heading-up + tilt while navigating.
   googleMapId: process.env.GOOGLE_MAP_ID ?? '',
+  // --- WhatsApp Cloud API (optional): lets the SERVER message a patient on a driver's behalf, so the
+  // driver never sees the number. Without it, the driver's request goes to the coordinator instead.
+  whatsappToken: process.env.WHATSAPP_CLOUD_TOKEN ?? '',
+  whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID ?? '',
+  // Business-initiated messages need an approved template; empty = send plain text (only works inside
+  // WhatsApp's 24-hour window, fine for testing).
+  whatsappTemplateName: process.env.WHATSAPP_TEMPLATE_NAME ?? '',
+  whatsappTemplateLang: process.env.WHATSAPP_TEMPLATE_LANG ?? 'ar',
+  whatsappApiBase: (process.env.WHATSAPP_API_BASE ?? 'https://graph.facebook.com/v21.0').replace(/\/$/, ''),
   // Traccar is an open-source GPS tracking server (phones + hardware trackers).
   // Optional: when set, live positions are pulled from Traccar into the app.
   traccarUrl: (process.env.TRACCAR_URL ?? '').replace(/\/$/, ''),
@@ -39,6 +47,7 @@ export const env = {
 };
 
 export const traccarEnabled = Boolean(env.traccarUrl);
+export const whatsappCloudEnabled = Boolean(env.whatsappToken && env.whatsappPhoneNumberId);
 export const googleMapsEnabled = Boolean(env.googleMapsApiKey);
 
 export const isProd = env.nodeEnv === 'production';

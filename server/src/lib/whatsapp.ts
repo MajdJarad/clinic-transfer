@@ -1,4 +1,3 @@
-import { env } from '../env';
 import { DEFAULT_WHATSAPP_TEMPLATE, renderTemplate } from './settings';
 
 /**
@@ -7,13 +6,23 @@ import { DEFAULT_WHATSAPP_TEMPLATE, renderTemplate } from './settings';
  * can click "send" inside WhatsApp (Web or mobile) themselves.
  */
 
-export function normalizePhone(raw: string, countryCode = env.defaultCountryCode): string {
-  const digits = (raw || '').replace(/[^\d]/g, '');
-  if (!digits) return '';
-  if (digits.startsWith('00')) return digits.slice(2);
-  if (digits.startsWith(countryCode)) return digits;
-  if (digits.startsWith('0')) return countryCode + digits.slice(1);
-  return countryCode + digits;
+/**
+ * The patient's number exactly as entered, as digits only (a leading 00 is dropped).
+ * No country code is ever added: the number must be typed with its international prefix.
+ */
+export function normalizePhone(raw: string): string {
+  const digits = (raw || '').replace(/\D/g, '');
+  return digits.startsWith('00') ? digits.slice(2) : digits;
+}
+
+/** An international number: 8-15 digits that do not start with 0 (country codes never do). */
+export function isValidInternationalPhone(raw: string): boolean {
+  return /^[1-9]\d{7,14}$/.test(normalizePhone(raw));
+}
+
+/** The form a number is stored in: "+" and the digits. */
+export function canonicalPhone(raw: string): string {
+  return `+${normalizePhone(raw)}`;
 }
 
 export interface ArrivalMessageInput {
@@ -39,7 +48,8 @@ export function buildArrivalMessage(input: ArrivalMessageInput, template: string
   });
 }
 
-export function buildWhatsAppLink(phone: string, message: string, countryCode?: string): string {
-  const normalized = normalizePhone(phone, countryCode);
-  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+/** A wa.me link, or null when the stored number is not a complete international number. */
+export function buildWhatsAppLink(phone: string, message: string): string | null {
+  if (!isValidInternationalPhone(phone)) return null;
+  return `https://wa.me/${normalizePhone(phone)}?text=${encodeURIComponent(message)}`;
 }

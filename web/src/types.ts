@@ -84,7 +84,11 @@ export interface Trip {
   status: TripStatus;
   notes: string | null;
   patientName: string;
+  /** Empty for drivers: a driver never receives a patient's number. */
   patientPhone: string;
+  /** The driver asked for the patient to be told the car arrived (and nobody has sent it yet). */
+  patientNoticeRequestedAt: string | null;
+  patientNoticeSentAt: string | null;
   driverId: string | null;
   vehicleId: string | null;
   driver: Driver | null;
@@ -113,9 +117,16 @@ export interface TrackingDriver {
   status: DriverStatus;
   lat: number | null;
   lng: number | null;
+  heading: number | null;
+  speedKmh: number | null;
+  accuracy: number | null;
   lastSeen: string | null;
+  /** Seconds since the last position, computed by the server. */
+  ageSeconds: number | null;
   source?: 'phone' | 'traccar';
   vehicle: { make: string; model: string; plate: string } | null;
+  /** The trip the driver is on right now (no patient phone). */
+  activeTrip: { id: string; status: TripStatus; patientName: string; origin: string; destination: string } | null;
 }
 
 export interface DashboardSummary {
@@ -128,14 +139,15 @@ export interface DashboardSummary {
 export interface ArrivalMessage {
   phone: string;
   normalizedPhone: string;
+  /** false for a number saved without its country code (it must be edited first). */
+  phoneValid: boolean;
   text: string;
-  link: string;
+  link: string | null;
 }
 
 // Admin-editable settings, stored on the server (see Administration).
 export interface AppSettings {
   clinicName: string;
-  defaultCountryCode: string;
   whatsappTemplate: string;
   mapCenterLat: number;
   mapCenterLng: number;

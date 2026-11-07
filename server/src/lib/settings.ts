@@ -49,7 +49,6 @@ export function unknownVariables(template: string): string[] {
 
 export const settingsSchema = z.object({
   clinicName: z.string().trim().min(1, 'اسم العيادة مطلوب').max(80),
-  defaultCountryCode: z.string().trim().regex(/^\d{1,4}$/, 'رمز الدولة أرقام فقط (مثل 966 أو 90)'),
   whatsappTemplate: z.string().trim().min(10, 'نص الرسالة قصير جداً').max(2000),
   mapCenterLat: z.number().min(-90).max(90),
   mapCenterLng: z.number().min(-180).max(180),
@@ -62,7 +61,6 @@ export const settingsPatchSchema = settingsSchema.partial().strict();
 export function defaultSettings(): AppSettings {
   return {
     clinicName: 'عيادة النخبة الطبية',
-    defaultCountryCode: env.defaultCountryCode,
     whatsappTemplate: DEFAULT_WHATSAPP_TEMPLATE,
     mapCenterLat: env.mapCenterLat,
     mapCenterLng: env.mapCenterLng,

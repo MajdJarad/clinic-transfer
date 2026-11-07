@@ -6,7 +6,7 @@ import {
   settingsSchema,
   unknownVariables,
 } from './settings';
-import { buildArrivalMessage, normalizePhone, buildWhatsAppLink } from './whatsapp';
+import { buildArrivalMessage, buildWhatsAppLink, canonicalPhone, isValidInternationalPhone, normalizePhone } from './whatsapp';
 
 describe('renderTemplate', () => {
   it('fills every occurrence of a variable', () => {
@@ -54,24 +54,35 @@ describe('buildArrivalMessage', () => {
   });
 });
 
-describe('phone normalization with the configurable country code', () => {
-  it('prefixes the code and drops the leading zero', () => {
-    expect(normalizePhone('0551112233', '966')).toBe('966551112233');
-    expect(normalizePhone('0532 111 22 33', '90')).toBe('905321112233');
+describe('patient phone numbers (never auto-prefixed)', () => {
+  it('keeps exactly the digits that were typed', () => {
+    expect(normalizePhone('+90 533 133 85 05')).toBe('905331338505');
+    expect(normalizePhone('905331338505')).toBe('905331338505');
+    expect(normalizePhone('00905331338505')).toBe('905331338505');
   });
-  it('keeps a number that already has the code, and handles 00 prefixes', () => {
-    expect(normalizePhone('966551112233', '966')).toBe('966551112233');
-    expect(normalizePhone('00905321112233', '90')).toBe('905321112233');
+  it('does NOT add a country code (the old bug turned 90... into 96690...)', () => {
+    expect(normalizePhone('905331338505')).not.toMatch(/^966/);
+    expect(normalizePhone('551112233')).toBe('551112233');
   });
-  it('builds a wa.me link with the chosen code', () => {
-    expect(buildWhatsAppLink('0532 111 22 33', 'hi', '90')).toBe('https://wa.me/905321112233?text=hi');
+  it('accepts only complete international numbers', () => {
+    expect(isValidInternationalPhone('+905331338505')).toBe(true);
+    expect(isValidInternationalPhone('966551112233')).toBe(true);
+    expect(isValidInternationalPhone('0551112233')).toBe(false); // local format: no country code
+    expect(isValidInternationalPhone('12345')).toBe(false);
+    expect(isValidInternationalPhone('')).toBe(false);
+  });
+  it('stores numbers in one canonical form', () => {
+    expect(canonicalPhone('00 90 533 133 85 05')).toBe('+905331338505');
+  });
+  it('builds a wa.me link from exactly the stored digits, or none for an incomplete number', () => {
+    expect(buildWhatsAppLink('+905331338505', 'hi')).toBe('https://wa.me/905331338505?text=hi');
+    expect(buildWhatsAppLink('0551112233', 'hi')).toBeNull();
   });
 });
 
 describe('settings validation', () => {
   const ok = {
     clinicName: 'عيادة',
-    defaultCountryCode: '90',
     whatsappTemplate: 'مرحباً {patientName}، وصلت السيارة',
     mapCenterLat: 41.0082,
     mapCenterLng: 28.9784,
@@ -82,7 +93,6 @@ describe('settings validation', () => {
   });
   it('rejects out-of-range or malformed values', () => {
     expect(settingsSchema.safeParse({ ...ok, mapCenterLat: 120 }).success).toBe(false);
-    expect(settingsSchema.safeParse({ ...ok, defaultCountryCode: '+966' }).success).toBe(false);
     expect(settingsSchema.safeParse({ ...ok, mapZoom: 99 }).success).toBe(false);
     expect(settingsSchema.safeParse({ ...ok, clinicName: '  ' }).success).toBe(false);
   });

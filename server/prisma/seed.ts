@@ -92,10 +92,10 @@ async function main() {
   }
 
   const patientData = [
-    { name: 'سارة العتيبي', phone: '0551112233', nationalId: '1000000001' },
-    { name: 'نورة الشهري', phone: '0552223344', nationalId: '1000000002' },
-    { name: 'ريم البقمي', phone: '0553334455', nationalId: '1000000003' },
-    { name: 'هند السبيعي', phone: '0554445566', nationalId: '1000000004' },
+    { name: 'سارة العتيبي', phone: '+966551112233', nationalId: '1000000001' },
+    { name: 'نورة الشهري', phone: '+966552223344', nationalId: '1000000002' },
+    { name: 'ريم البقمي', phone: '+966553334455', nationalId: '1000000003' },
+    { name: 'هند السبيعي', phone: '+966554445566', nationalId: '1000000004' },
   ];
 
   const patients = [];
@@ -137,7 +137,7 @@ async function main() {
       data: [
         {
           patientName: 'سارة العتيبي',
-          patientPhone: '0551112233',
+          patientPhone: '+966551112233',
           driverId: drivers[0].id,
           vehicleId: (await prisma.vehicle.findUnique({ where: { plate: VEHICLES[0].plate } }))!.id,
           type: 'AIRPORT_TO_HOTEL',
@@ -148,7 +148,7 @@ async function main() {
         },
         {
           patientName: 'نورة الشهري',
-          patientPhone: '0552223344',
+          patientPhone: '+966552223344',
           driverId: drivers[1].id,
           type: 'HOTEL_TO_CLINIC',
           ...place(HOTEL, CLINIC),
@@ -158,7 +158,7 @@ async function main() {
         },
         {
           patientName: 'ريم البقمي',
-          patientPhone: '0553334455',
+          patientPhone: '+966553334455',
           type: 'CLINIC_TO_HOTEL',
           ...place(CLINIC, HOTEL),
           scheduledAt: at(16, 30),

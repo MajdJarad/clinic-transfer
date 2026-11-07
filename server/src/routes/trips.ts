@@ -4,12 +4,24 @@ import { tripTypeSchema, tripStatusSchema } from '../constants';
 import { prisma } from '../db';
 import { asyncHandler, HttpError } from '../lib/http';
 import { authenticate, requireRole } from '../middleware/auth';
+import { redactPatientPhone } from '../lib/privacy';
 import { getSettings } from '../lib/settings';
-import { buildArrivalMessage, buildWhatsAppLink, normalizePhone } from '../lib/whatsapp';
+import { whatsappCloudEnabled } from '../env';
+import { sendWhatsAppMessage } from '../services/whatsappCloud';
+import { buildArrivalMessage, buildWhatsAppLink, canonicalPhone, isValidInternationalPhone, normalizePhone } from '../lib/whatsapp';
 
 export const tripsRouter = Router();
 
 tripsRouter.use(authenticate);
+
+// A driver never receives a patient's phone number, from any trip endpoint.
+tripsRouter.use((req, res, next) => {
+  if (req.user?.role === 'DRIVER') {
+    const send = res.json.bind(res);
+    res.json = (body: unknown) => send(redactPatientPhone(body));
+  }
+  next();
+});
 
 const tripInclude = {
   driver: { include: { user: { select: { name: true, phone: true } } } },
@@ -84,7 +96,11 @@ const lng = z.number().min(-180).max(180).nullish();
 
 const createSchema = z.object({
   patientName: z.string().min(1),
-  patientPhone: z.string().min(3),
+  // Typed with the international prefix (e.g. +905331234567); nothing is ever added automatically.
+  patientPhone: z
+    .string()
+    .refine(isValidInternationalPhone, 'رقم المريض يجب أن يُكتب مع رمز الدولة (مثل +905331234567)')
+    .transform(canonicalPhone),
   type: tripTypeSchema,
   origin: z.string().min(1),
   destination: z.string().min(1),
@@ -252,14 +268,15 @@ tripsRouter.get(
       include: tripInclude,
     });
     if (!trip) throw new HttpError(404, 'Trip not found');
-    if (req.user!.role === 'DRIVER' && trip.driverId !== req.user!.driverId) {
+    if (req.user!.role === 'DRIVER') {
+      // Drivers do not contact patients: only the coordinator sees the number and sends this message.
       throw new HttpError(403, 'Insufficient permissions');
     }
     if (!trip.driver || !trip.vehicle) {
       throw new HttpError(400, 'Trip has no assigned driver/vehicle yet');
     }
 
-    // Template and country code are admin-editable (Administration > Messages / Settings).
+    // The message text is admin-editable (Administration > Messages).
     const settings = await getSettings();
     const text = buildArrivalMessage(
       {
@@ -276,9 +293,93 @@ tripsRouter.get(
 
     res.json({
       phone: trip.patientPhone,
-      normalizedPhone: normalizePhone(trip.patientPhone, settings.defaultCountryCode),
+      normalizedPhone: normalizePhone(trip.patientPhone),
+      // false for a number saved without its country code (nothing is guessed): it must be edited first
+      phoneValid: isValidInternationalPhone(trip.patientPhone),
       text,
-      link: buildWhatsAppLink(trip.patientPhone, text, settings.defaultCountryCode),
+      link: buildWhatsAppLink(trip.patientPhone, text),
     });
+  }),
+);
+
+const ACTIVE_STATUSES = ['EN_ROUTE', 'ARRIVED', 'PICKED_UP'];
+
+// Delete a trip for good. Drivers cannot; the web app asks for confirmation first.
+tripsRouter.delete(
+  '/:id',
+  requireRole('ADMIN', 'COORDINATOR'),
+  asyncHandler(async (req, res) => {
+    const trip = await prisma.trip.findUnique({ where: { id: req.params.id } });
+    if (!trip) throw new HttpError(404, 'Trip not found');
+    await prisma.trip.delete({ where: { id: trip.id } });
+
+    // A driver who was on this trip is free again, unless another trip of theirs is still in progress.
+    if (trip.driverId && ACTIVE_STATUSES.includes(trip.status)) {
+      const stillBusy = await prisma.trip.count({ where: { driverId: trip.driverId, status: { in: ACTIVE_STATUSES } } });
+      if (!stillBusy) await prisma.driver.update({ where: { id: trip.driverId }, data: { status: 'AVAILABLE' } });
+    }
+    res.status(204).end();
+  }),
+);
+
+// Tell the patient the car has arrived. Meant for the driver, who must not see the number: the
+// server sends the message itself (WhatsApp Cloud API) and the number never leaves it. While sending
+// is not configured, the request is recorded and the coordinator, who can see the number, sends it.
+tripsRouter.post(
+  '/:id/notify-patient',
+  asyncHandler(async (req, res) => {
+    const trip = await prisma.trip.findUnique({ where: { id: req.params.id }, include: tripInclude });
+    if (!trip) throw new HttpError(404, 'Trip not found');
+    if (req.user!.role === 'DRIVER' && trip.driverId !== req.user!.driverId) throw new HttpError(403, 'Insufficient permissions');
+    if (trip.status === 'COMPLETED' || trip.status === 'CANCELLED') throw new HttpError(400, 'الرحلة منتهية');
+    if (!trip.driver || !trip.vehicle) throw new HttpError(400, 'Trip has no assigned driver/vehicle yet');
+
+    // Do not message the patient twice by accident (a double tap).
+    if (trip.patientNoticeSentAt && Date.now() - trip.patientNoticeSentAt.getTime() < 2 * 60_000) {
+      return res.json({ status: 'already', at: trip.patientNoticeSentAt });
+    }
+
+    if (!whatsappCloudEnabled) {
+      const at = new Date();
+      await prisma.trip.update({ where: { id: trip.id }, data: { patientNoticeRequestedAt: at } });
+      return res.json({ status: 'requested', at });
+    }
+
+    const settings = await getSettings();
+    const vehicle = `${trip.vehicle.make} ${trip.vehicle.model}${trip.vehicle.color ? ` (${trip.vehicle.color})` : ''}`;
+    const text = buildArrivalMessage(
+      {
+        patientName: trip.patientName,
+        vehicleMake: trip.vehicle.make,
+        vehicleModel: trip.vehicle.model,
+        vehiclePlate: trip.vehicle.plate,
+        vehicleColor: trip.vehicle.color,
+        driverName: trip.driver.user.name,
+        driverPhone: trip.driver.user.phone,
+      },
+      settings.whatsappTemplate,
+    );
+    await sendWhatsAppMessage({
+      to: normalizePhone(trip.patientPhone),
+      text,
+      templateParams: [trip.patientName, vehicle, trip.vehicle.plate, trip.driver.user.name, trip.driver.user.phone ?? ''],
+    });
+    const at = new Date();
+    await prisma.trip.update({ where: { id: trip.id }, data: { patientNoticeSentAt: at, patientNoticeRequestedAt: null } });
+    res.json({ status: 'sent', at });
+  }),
+);
+
+// The coordinator has sent the message by hand (WhatsApp link): clear the driver's request.
+tripsRouter.post(
+  '/:id/patient-notice/sent',
+  requireRole('ADMIN', 'COORDINATOR'),
+  asyncHandler(async (req, res) => {
+    const trip = await prisma.trip.update({
+      where: { id: req.params.id },
+      data: { patientNoticeSentAt: new Date(), patientNoticeRequestedAt: null },
+      include: tripInclude,
+    });
+    res.json(trip);
   }),
 );

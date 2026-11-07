@@ -3,6 +3,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useMapConfig } from '../config';
+import { useI18n } from '../i18n';
+import { tripStatusKeys } from '../labels';
+import { isOpenTrip, NEXT_ACTION } from '../lib/tripFlow';
+import type { Trip } from '../types';
+import { TripBar } from '../features/map/components/TripBar';
 import { toInputValue } from '../lib/date';
 import { copyText } from '../features/map/clipboard';
 import { DirectionsPanel, type DepartState } from '../features/map/components/DirectionsPanel';
@@ -30,13 +35,36 @@ function placeFromParams(sp: URLSearchParams, label: string, lat: string, lng: s
  * switches to "directions" (route options, steps, in-app turn-by-turn navigation).
  * It only wires state together: the pieces live in features/map.
  */
+export interface MapScreenProps {
+  /** Size/shape of the map box. Default: the admin layout. */
+  className?: string;
+  /**
+   * The driver's trip. The driver's start is always their real position and the target is the patient
+   * until pick-up, then the destination. Never shows or needs the patient's phone number.
+   */
+  trip?: Trip | null;
+  /** Move the trip to its next status (driver). */
+  onAdvanceTrip?: (trip: Trip) => Promise<void>;
+}
+
+const NO_PARAMS = new URLSearchParams();
+
+/** The admin / coordinator map page. */
 export function MapPage() {
+  return <MapScreen />;
+}
+
+export function MapScreen({ className, trip: driverTrip, onAdvanceTrip }: MapScreenProps = {}) {
   const mapConfig = useMapConfig();
-  const [searchParams] = useSearchParams();
+  const { t } = useI18n();
+  const [urlParams] = useSearchParams();
+  const driverMode = Boolean(onAdvanceTrip);
+  // A driver's screen is driven by the trip prop, not by the address bar.
+  const searchParams = driverMode ? NO_PARAMS : urlParams;
 
   const initialFrom = placeFromParams(searchParams, 'origin', 'origLat', 'origLng');
   const initialTo = placeFromParams(searchParams, 'destination', 'destLat', 'destLng');
-  const opensWithTrip = Boolean(initialFrom.label || initialFrom.coord || initialTo.label || initialTo.coord);
+  const opensWithTrip = Boolean(initialFrom.label || initialFrom.coord || initialTo.label || initialTo.coord) || (driverMode && !!driverTrip && isOpenTrip(driverTrip.status));
 
   const [view, setView] = useState<'explore' | 'directions'>(opensWithTrip ? 'directions' : 'explore');
   const wp = useWaypoints(initialFrom, initialTo);
@@ -111,9 +139,26 @@ export function MapPage() {
   const { mapRef, gRef, ready } = gm;
   useMapLayers(gm, layers);
 
+  // ── Driver trip: start from where the driver really is; the target depends on the stage of the trip
+  // (patient before pick-up, destination after). Saved coordinates are used; for older trips the address
+  // is looked up; nothing is ever replaced by made-up coordinates.
+  useEffect(() => {
+    if (!driverTrip || !isOpenTrip(driverTrip.status)) return;
+    const dropoff = driverTrip.status === 'PICKED_UP';
+    const label = dropoff ? driverTrip.destination : driverTrip.origin;
+    const lat = dropoff ? driverTrip.destLat : driverTrip.originLat;
+    const lng = dropoff ? driverTrip.destLng : driverTrip.originLng;
+    setView('directions');
+    if (lat != null && lng != null) wp.setPlace('to', { label, coord: { lat, lng } });
+    else void wp.resolve('to', label);
+    wp.useMyLocation('from'); // the driver may have moved on since the last stage
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [driverTrip?.id, driverTrip?.status]);
+
   // ── Sync with the URL when it changes (opened again from another calendar trip), and locate
   // addresses that arrive without coordinates. Only touches state when something differs.
   useEffect(() => {
+    if (driverMode) return;
     const f = placeFromParams(searchParams, 'origin', 'origLat', 'origLng');
     const t = placeFromParams(searchParams, 'destination', 'destLat', 'destLng');
     const apply = (target: 'from' | 'to', next: Place, cur: Place) => {
@@ -304,6 +349,22 @@ export function MapPage() {
     flash(ok ? 'تم نسخ رابط المسار' : 'تعذّر النسخ');
   };
 
+  // At arrival: "arrived at the patient" before pick-up, "finish the trip" after; and the driver can tell the
+  // patient the car is here without ever seeing the number (the server sends it).
+  const arrivalNext = driverTrip && (driverTrip.status === 'EN_ROUTE' || driverTrip.status === 'PICKED_UP') ? NEXT_ACTION[driverTrip.status] : undefined;
+  const arrivalAction =
+    driverTrip && onAdvanceTrip && arrivalNext ? { label: arrivalNext.label, run: () => onAdvanceTrip(driverTrip) } : undefined;
+  const secondaryAction =
+    driverTrip && driverMode && driverTrip.status !== 'PICKED_UP'
+      ? {
+          label: '📨 إشعار المريض بوصول السيارة',
+          run: async () => {
+            const r = await api.trips.notifyPatient(driverTrip.id);
+            return r.status === 'requested' ? '✓ أُبلغ المنسق ليرسل الرسالة للمريض' : '✓ أُرسلت الرسالة للمريض';
+          },
+        }
+      : undefined;
+
   const canStart = !!route && !calculating && !wp.fromDirty && !wp.toDirty && !!from.coord && !!to.coord;
   const startHint = calculating
     ? 'جارٍ حساب المسار…'
@@ -316,7 +377,7 @@ export function MapPage() {
   return (
     <div
       className={`relative w-full overflow-hidden rounded-2xl bg-slate-900 transition-all ${
-        isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen rounded-none' : 'h-[calc(100dvh-10rem)] sm:h-[calc(100vh-6.5rem)]'
+        isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen rounded-none' : (className ?? 'h-[calc(100dvh-10rem)] sm:h-[calc(100vh-6.5rem)]')
       }`}
     >
       <div ref={gm.divRef} className="z-0 h-full w-full" />
@@ -364,13 +425,26 @@ export function MapPage() {
             departPast={departPast}
             canStart={canStart}
             startHint={startHint}
-            onStart={() => {
+            onStart={async () => {
               unlockSpeech();
+              // Starting the drive to the patient puts the trip "on the way", as the driver would by hand.
+              if (driverTrip?.status === 'ASSIGNED' && onAdvanceTrip) {
+                try {
+                  await onAdvanceTrip(driverTrip);
+                } catch {
+                  /* navigation must not be blocked by a failed status update */
+                }
+              }
               if (route && to.coord) setNav({ route, destination: { label: to.label, coord: to.coord }, mode: travelMode, avoid });
             }}
             onShare={shareRoute}
             onBack={() => setView('explore')}
             trip={trip}
+            tripSlot={
+              driverTrip && onAdvanceTrip && isOpenTrip(driverTrip.status) ? (
+                <TripBar trip={driverTrip} onAdvance={onAdvanceTrip} statusLabel={t(tripStatusKeys[driverTrip.status])} />
+              ) : undefined
+            }
           />
         )}
       </div>
@@ -409,7 +483,17 @@ export function MapPage() {
       )}
 
       {/* In-app turn-by-turn navigation */}
-      {nav && <NavigationScreen destination={nav.destination} mode={nav.mode} route={nav.route} avoid={nav.avoid} onExit={() => setNav(null)} />}
+      {nav && (
+        <NavigationScreen
+          destination={nav.destination}
+          mode={nav.mode}
+          route={nav.route}
+          avoid={nav.avoid}
+          arrivalAction={arrivalAction}
+          secondaryAction={secondaryAction}
+          onExit={() => setNav(null)}
+        />
+      )}
     </div>
   );
 }

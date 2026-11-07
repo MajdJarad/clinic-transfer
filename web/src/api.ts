@@ -132,10 +132,13 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ status }),
       }),
-    sendLocation: (id: string, lat: number, lng: number) =>
+    sendLocation: (
+      id: string,
+      p: { lat: number; lng: number; heading?: number | null; speed?: number | null; accuracy?: number | null },
+    ) =>
       request(`/drivers/${id}/location`, {
         method: 'POST',
-        body: JSON.stringify({ lat, lng }),
+        body: JSON.stringify(p),
       }),
     live: () => request<TrackingDriver[]>('/drivers/tracking/live'),
     linkTraccar: (id: string, traccarDeviceId: string | null) =>
@@ -183,6 +186,12 @@ export const api = {
     setStatus: (id: string, status: string) =>
       request<Trip>(`/trips/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
     cancel: (id: string) => request<Trip>(`/trips/${id}/cancel`, { method: 'POST' }),
+    /** Delete for good (not for drivers). The screen asks for confirmation first. */
+    delete: (id: string) => request<void>(`/trips/${id}`, { method: 'DELETE' }),
+    /** Tell the patient the car has arrived: the server sends it (or asks the coordinator to), the number never reaches the caller. */
+    notifyPatient: (id: string) =>
+      request<{ status: 'sent' | 'requested' | 'already'; at: string }>(`/trips/${id}/notify-patient`, { method: 'POST' }),
+    markPatientNoticeSent: (id: string) => request<Trip>(`/trips/${id}/patient-notice/sent`, { method: 'POST' }),
     arrivalMessage: (id: string) => request<ArrivalMessage>(`/trips/${id}/arrival-message`),
   },
 

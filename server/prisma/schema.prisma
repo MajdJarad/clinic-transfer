@@ -34,6 +34,9 @@ model Driver {
   status          String   @default("AVAILABLE")
   lat             Float?
   lng             Float?
+  heading         Float?    // degrees clockwise from north, from the phone
+  speedKmh        Float?
+  accuracy        Float?    // meters
   lastSeen        DateTime?
   // Optional Traccar device id (hardware tracker in the car, or the phone's Traccar Client).
   traccarDeviceId String?
@@ -99,6 +102,10 @@ model Trip {
   @@index([scheduledAt])
   @@index([driverId])
   @@index([status])
+  // The driver asked for the patient to be told the car has arrived (and it is not sent automatically
+  // yet): the coordinator sends it. SentAt is set once the patient has been notified.
+  patientNoticeRequestedAt DateTime?
+  patientNoticeSentAt      DateTime?
 }
 
 model Maintenance {

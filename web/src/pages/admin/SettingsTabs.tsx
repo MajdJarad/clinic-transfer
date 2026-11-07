@@ -5,7 +5,7 @@ import { Button, Card, EmptyState, ErrorText, Field, Input, Textarea } from '../
 import type { AppSettings, SystemInfo } from '../../types';
 
 // Settings live on the server (Setting table). What is saved here is what the backend actually uses:
-// the WhatsApp text and country code when it builds messages, the clinic name and map center for every screen.
+// the WhatsApp text when it builds messages, the clinic name and map center for every screen.
 
 interface Loaded {
   settings: AppSettings;
@@ -181,7 +181,7 @@ export function MessagesTab() {
 
 export function SettingsTab() {
   const { data, setData, error: loadError } = useServerSettings();
-  const [form, setForm] = useState({ clinicName: '', defaultCountryCode: '', mapCenterLat: '', mapCenterLng: '', mapZoom: '' });
+  const [form, setForm] = useState({ clinicName: '', mapCenterLat: '', mapCenterLng: '', mapZoom: '' });
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -189,7 +189,6 @@ export function SettingsTab() {
   const fill = (s: AppSettings) =>
     setForm({
       clinicName: s.clinicName,
-      defaultCountryCode: s.defaultCountryCode,
       mapCenterLat: String(s.mapCenterLat),
       mapCenterLng: String(s.mapCenterLng),
       mapZoom: String(s.mapZoom),
@@ -201,7 +200,6 @@ export function SettingsTab() {
   const patch = useMemo(
     () => ({
       clinicName: form.clinicName,
-      defaultCountryCode: form.defaultCountryCode,
       mapCenterLat: Number(form.mapCenterLat),
       mapCenterLng: Number(form.mapCenterLng),
       mapZoom: Number(form.mapZoom),
@@ -226,7 +224,7 @@ export function SettingsTab() {
   };
 
   const reset = async () => {
-    if (!window.confirm('استعادة كل الإعدادات (الاسم، رمز الدولة، الخريطة، ونص الرسالة) إلى القيم الافتراضية؟')) return;
+    if (!window.confirm('استعادة كل الإعدادات (الاسم، الخريطة، ونص الرسالة) إلى القيم الافتراضية؟')) return;
     setBusy(true);
     setError('');
     try {
@@ -251,18 +249,9 @@ export function SettingsTab() {
           <h3 className="text-sm font-bold text-fg">🏥 بيانات العيادة</h3>
           <p className="text-xs text-muted">تظهر في الشريط الجانبي وصفحة الدخول وعنوان التبويب.</p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4">
           <Field label="اسم العيادة">
             <Input value={form.clinicName} onChange={(e) => setForm({ ...form, clinicName: e.target.value })} data-testid="clinic-name" />
-          </Field>
-          <Field label="رمز الدولة الافتراضي" hint="يُضاف لأرقام المرضى التي لا تحمل رمزاً عند فتح واتساب (966 السعودية، 90 تركيا)">
-            <Input
-              value={form.defaultCountryCode}
-              onChange={(e) => setForm({ ...form, defaultCountryCode: e.target.value })}
-              dir="ltr"
-              placeholder="966"
-              data-testid="country-code"
-            />
           </Field>
         </div>
       </Card>
