@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { api } from '../api';
+import { api } from '../../api';
+import { newSessionToken as newSession } from './resolveAddress';
 
 export interface PickedPlace {
   label: string;
@@ -25,11 +26,6 @@ interface PlaceInputProps {
   /** Set when the text was edited but no suggestion has been chosen yet. */
   unresolved?: boolean;
 }
-
-const newSession = () =>
-  typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 
 /** Google-style place search: suggestions as you type, keyboard support, "my location" row. */
 export function PlaceInput({

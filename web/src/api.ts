@@ -10,7 +10,7 @@ import type {
   UserRecord,
   Vehicle,
 } from './types';
-import type { GeoRouteResponse } from './lib/routeNav';
+import type { GeoRouteResponse } from './features/map/routeNav';
 
 const TOKEN_KEY = 'transfer_token';
 const USER_KEY = 'transfer_user';
@@ -71,16 +71,22 @@ export const api = {
     request<{
       mapProvider: string;
       googleMapsApiKey: string;
+      googleMapId: string;
       traccarEnabled: boolean;
       defaultCenter: { lat: number; lng: number };
       defaultZoom: number;
     }>('/config'),
 
   geo: {
-    // Route(s) with turn-by-turn steps. `alternatives` asks for extra route options.
-    route: (from: { lat: number; lng: number }, to: { lat: number; lng: number }, mode = 'driving', alternatives = true) =>
+    // Route(s) with turn-by-turn steps, traffic and (optionally) alternatives.
+    route: (
+      from: { lat: number; lng: number },
+      to: { lat: number; lng: number },
+      o: { mode?: 'driving' | 'walking'; alternatives?: boolean; avoidTolls?: boolean; avoidHighways?: boolean; avoidFerries?: boolean } = {},
+    ) =>
       request<GeoRouteResponse>(
-        `/geo/route?from=${from.lat},${from.lng}&to=${to.lat},${to.lng}&mode=${mode}&alt=${alternatives ? 1 : 0}`,
+        `/geo/route?from=${from.lat},${from.lng}&to=${to.lat},${to.lng}&mode=${o.mode ?? 'driving'}` +
+          `&alt=${o.alternatives === false ? 0 : 1}&tolls=${o.avoidTolls ? 1 : 0}&highways=${o.avoidHighways ? 1 : 0}&ferries=${o.avoidFerries ? 1 : 0}`,
       ),
     autocomplete: (q: string, session: string) =>
       request<{ placeId: string; main: string; secondary: string }[]>(
@@ -90,10 +96,9 @@ export const api = {
       request<{ label: string; name: string; lat: number; lng: number }>(
         `/geo/place/${encodeURIComponent(placeId)}?session=${session}`,
       ),
-    search: (q: string, limit = 6) =>
-      request<{ label: string; lat: number; lng: number }[]>(
-        `/geo/search?q=${encodeURIComponent(q)}&limit=${limit}`,
-      ),
+    // Address of a point picked on the map (always returns a usable label).
+    reverse: (lat: number, lng: number) =>
+      request<{ label: string; lat: number; lng: number; resolved: boolean }>(`/geo/reverse?at=${lat},${lng}`),
   },
 
   dashboard: () => request<DashboardSummary>('/dashboard/summary'),

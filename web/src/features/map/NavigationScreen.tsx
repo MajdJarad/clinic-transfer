@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '../api';
-import { useMapConfig } from '../config';
-import { createHtmlMarker, loadGoogleMaps, pinHtml, type HtmlMarker } from '../lib/googleMaps';
+import { api } from '../../api';
+import { useMapConfig } from '../../config';
+import { createHtmlMarker, loadGoogleMaps, pinHtml, type HtmlMarker } from './googleMaps';
 import {
   arrivalClock,
   bearing,
@@ -19,7 +19,7 @@ import {
   type Progress,
   type RouteData,
   type RouteModel,
-} from '../lib/routeNav';
+} from './routeNav';
 import { ManeuverIcon } from './ManeuverIcon';
 
 export interface NavTarget {
@@ -33,6 +33,8 @@ interface NavigationScreenProps {
   mode: 'driving' | 'walking';
   route: RouteData; // the route chosen on the planning screen
   startWithGps: boolean; // origin is "my location": follow the real GPS; otherwise preview along the route
+  /** Road preferences, kept when the route has to be recalculated. */
+  avoid?: { tolls: boolean; highways: boolean; ferries: boolean };
   onExit: () => void;
 }
 
@@ -61,8 +63,8 @@ function speak(text: string, muted: boolean) {
   }
 }
 
-export function NavigationScreen({ origin, destination, mode, route, startWithGps, onExit }: NavigationScreenProps) {
-  const { googleMapsApiKey } = useMapConfig();
+export function NavigationScreen({ origin, destination, mode, route, startWithGps, avoid, onExit }: NavigationScreenProps) {
+  const { googleMapsApiKey, googleMapId } = useMapConfig();
 
   // ── render state
   const [model, setModel] = useState<RouteModel>(() => buildRouteModel(route));
@@ -98,6 +100,7 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
   const simSpeedRef = useRef(simSpeed);
   const mutedRef = useRef(muted);
   const followRef = useRef(true);
+  const headingUpRef = useRef(false); // true when the map is a vector map that can rotate/tilt
   const statusRef = useRef(status);
   const hintRef = useRef(0);
   const alongRef = useRef(0);
@@ -133,8 +136,13 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
           disableDefaultUI: true,
           gestureHandling: 'greedy',
           clickableIcons: false,
+          // A Cloud Map ID gives a vector map: heading-up rotation and 3D tilt like Google navigation.
+          ...(googleMapId ? { mapId: googleMapId, tilt: mode === 'driving' ? 45 : 0 } : {}),
         });
         mapRef.current = map;
+        map.addListener('renderingtype_changed', () => {
+          headingUpRef.current = map.getRenderingType?.() === 'VECTOR';
+        });
         map.addListener('dragstart', () => {
           followRef.current = false;
           setFollow(false);
@@ -209,13 +217,17 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
       if (g && map) {
         puckRef.current?.setPosition(shown);
         const svg = puckRef.current?.element()?.querySelector('svg') as SVGElement | null;
-        if (svg) svg.style.transform = `rotate(${heading}deg)`;
+        // The arrow is relative to the screen: when the map itself rotates (heading-up) it points up.
+        if (svg) svg.style.transform = `rotate(${heading - (map.getHeading?.() ?? 0)}deg)`;
         const path = m.pi.path;
         const i = snap.index;
         remainingRef.current?.setPath([snap.point, ...path.slice(i + 1)]);
         casingRef.current?.setPath([snap.point, ...path.slice(i + 1)]);
         passedRef.current?.setPath([...path.slice(0, i + 1), snap.point]);
-        if (followRef.current) map.panTo(shown);
+        if (followRef.current) {
+          map.panTo(shown);
+          if (headingUpRef.current) map.setHeading(heading);
+        }
       }
 
       // ── arrival
@@ -250,10 +262,12 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
       if (t != null && !ann.has(`${pr.stepIndex}:${t}`) && (t !== phases[0] || stepLen >= phases[0] * 1.2)) {
         phases.filter((x) => x >= t).forEach((x) => ann.add(`${pr.stepIndex}:${x}`));
         const last = t === phases[phases.length - 1];
+        // "Continue on X" / road-name changes aren't worth interrupting the driver for.
+        const quiet = !up.isArrival && (up.maneuver === 'STRAIGHT' || up.maneuver === 'NAME_CHANGE');
         const text = up.isArrival
-          ? last ? 'لقد وصلت إلى وجهتك' : `بعد ${speakDistance(pr.distToManeuver)}، ستصل إلى وجهتك`
+          ? last ? 'اقتربت من وجهتك' : `بعد ${speakDistance(pr.distToManeuver)}، ستصل إلى وجهتك`
           : last ? up.instruction : `بعد ${speakDistance(pr.distToManeuver)}، ${up.instruction}`;
-        speak(text, mutedRef.current);
+        if (!quiet) speak(text, mutedRef.current);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -271,7 +285,13 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
     setRerouteErr(false);
     speak('جارٍ إعادة حساب المسار', mutedRef.current);
     try {
-      const res = await api.geo.route(from, destination.coord, mode, false);
+      const res = await api.geo.route(from, destination.coord, {
+        mode,
+        alternatives: false,
+        avoidTolls: avoid?.tolls,
+        avoidHighways: avoid?.highways,
+        avoidFerries: avoid?.ferries,
+      });
       const next = buildRouteModel(res.routes?.[0] ?? res);
       hintRef.current = 0;
       alongRef.current = 0;
@@ -364,7 +384,26 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
     if (map) {
       map.panTo(posRef.current);
       map.setZoom(mode === 'walking' ? 18 : 17);
+      if (headingUpRef.current) map.setHeading(headingRef.current);
     }
+  };
+
+  // Whole remaining route on screen (Google's "route overview").
+  const overview = () => {
+    const g = gRef.current;
+    const map = mapRef.current;
+    if (!g || !map) return;
+    followRef.current = false;
+    setFollow(false);
+    const bounds = new g.maps.LatLngBounds();
+    const m = modelRef.current;
+    bounds.extend(posRef.current);
+    m.pi.path.slice(Math.max(0, hintRef.current)).forEach((p) => bounds.extend(p));
+    if (headingUpRef.current) {
+      map.setHeading(0);
+      map.setTilt(0);
+    }
+    map.fitBounds(bounds, { top: 190, right: 40, bottom: 120, left: 40 });
   };
 
   // ── derived UI values
@@ -445,15 +484,26 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
         )}
       </div>
 
-      {/* ───── Re-center ───── */}
-      {!follow && status !== 'arrived' && (
-        <button
-          onClick={recenter}
-          className="absolute bottom-28 end-3 z-10 flex items-center gap-1.5 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-blue-600 shadow-2xl"
-          data-testid="nav-recenter"
-        >
-          🎯 إعادة التركيز
-        </button>
+      {/* ───── Re-center / overview ───── */}
+      {status !== 'arrived' && (
+        <div className="absolute bottom-28 end-3 z-10 flex flex-col items-end gap-2">
+          <button
+            onClick={overview}
+            className="rounded-full bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-2xl active:scale-95"
+            data-testid="nav-overview"
+          >
+            🗺️ نظرة عامة
+          </button>
+          {!follow && (
+            <button
+              onClick={recenter}
+              className="flex items-center gap-1.5 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-blue-600 shadow-2xl active:scale-95"
+              data-testid="nav-recenter"
+            >
+              🎯 إعادة التركيز
+            </button>
+          )}
+        </div>
       )}
 
       {/* ───── Bottom bar ───── */}

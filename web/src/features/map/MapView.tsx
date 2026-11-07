@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from 'react';
-import { useI18n } from '../i18n';
-import { useMapConfig } from '../config';
+import { useI18n } from '../../i18n';
+import { useMapConfig } from '../../config';
 import {
   createHtmlMarker,
   escapeHtml,
@@ -9,7 +9,7 @@ import {
   loadGoogleMaps,
   pinHtml,
   type HtmlMarker,
-} from '../lib/googleMaps';
+} from './googleMaps';
 
 export interface MapPoint {
   id: string;

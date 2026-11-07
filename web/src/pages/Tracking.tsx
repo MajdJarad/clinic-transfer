@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 import { useMapConfig } from '../config';
-import { MapView, type MapPoint } from '../components/MapView';
+import { MapView, type MapPoint } from '../features/map/MapView';
 import { Card, EmptyState, PageHeader, SectionTitle, StatusPill } from '../components/ui';
 import { driverStatusKeys } from '../labels';
 import type { TrackingDriver } from '../types';

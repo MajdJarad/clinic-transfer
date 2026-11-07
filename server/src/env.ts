@@ -23,12 +23,9 @@ export const env = {
   googleCalendarId: process.env.GOOGLE_CALENDAR_ID ?? '',
   defaultCountryCode: process.env.DEFAULT_COUNTRY_CODE ?? '966',
 
-  // --- Maps ---
-  // Rendering, routing (Routes API), place search (Places API) and traffic all use
-  // GOOGLE_MAPS_API_KEY. OSRM / Nominatim are only a fallback when no key is set.
-  osrmUrl: process.env.OSRM_URL ?? 'https://router.project-osrm.org',
-  // Nominatim geocoding (address search) - OSM, free.
-  nominatimUrl: process.env.NOMINATIM_URL ?? 'https://nominatim.openstreetmap.org',
+  // --- Maps: everything (map, routes, place search, traffic) uses GOOGLE_MAPS_API_KEY ---
+  // Optional: a Google Cloud *Map ID* (vector map) enables heading-up + tilt while navigating.
+  googleMapId: process.env.GOOGLE_MAP_ID ?? '',
   // Traccar is an open-source GPS tracking server (phones + hardware trackers).
   // Optional: when set, live positions are pulled from Traccar into the app.
   traccarUrl: (process.env.TRACCAR_URL ?? '').replace(/\/$/, ''),

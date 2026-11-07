@@ -3,10 +3,13 @@ import { api } from '../api';
 import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
 import { useMapConfig } from '../config';
-import { MapView, type MapPoint } from '../components/MapView';
-import { DEFAULT_DESTINATION, DEFAULT_ORIGIN } from '../lib/googleMaps';
-import { NavigationScreen } from '../components/NavigationScreen';
-import type { RouteData } from '../lib/routeNav';
+import { MapView, type MapPoint } from '../features/map/MapView';
+import { DEFAULT_DESTINATION, DEFAULT_ORIGIN } from '../features/map/googleMaps';
+import { NavigationScreen } from '../features/map/NavigationScreen';
+import { PlaceInput } from '../features/map/PlaceInput';
+import { formatDistance, formatDuration } from '../features/map/routeNav';
+import { NO_AVOID, useRoutes } from '../features/map/useRoutes';
+import { useWaypoints } from '../features/map/useWaypoints';
 import { WhatsAppModal } from '../components/WhatsAppModal';
 import { ThemeToggle } from '../components/Controls';
 import {
@@ -69,18 +72,23 @@ export function DriverApp() {
   const [calQuery, setCalQuery] = useState('');
 
   // ─── Google Maps Navigation State (Fully Editable Waypoints) ───
-  const [origin, setOrigin] = useState<string>(DEFAULT_ORIGIN.label);
-  const [destination, setDestination] = useState<string>(DEFAULT_DESTINATION.label);
-  const [origCoord, setOrigCoord] = useState<{ lat: number; lng: number } | null>(DEFAULT_ORIGIN.coord);
-  const [destCoord, setDestCoord] = useState<{ lat: number; lng: number } | null>(DEFAULT_DESTINATION.coord);
+  const wp = useWaypoints(
+    { label: DEFAULT_ORIGIN.label, coord: DEFAULT_ORIGIN.coord },
+    { label: DEFAULT_DESTINATION.label, coord: DEFAULT_DESTINATION.coord },
+  );
+  const { from, to, fromIsGps, fromDirty, toDirty } = wp;
   const [travelMode, setTravelMode] = useState<'driving' | 'walking'>('driving');
-  const [route, setRoute] = useState<[number, number][] | null>(null);
-  const [navRoute, setNavRoute] = useState<RouteData | null>(null); // full route with turn-by-turn steps
+  const [selRoute, setSelRoute] = useState(0);
   const [navOpen, setNavOpen] = useState(false);
-  const [routeInfo, setRouteInfo] = useState<{ distance: number; duration: number } | null>(null);
-  const [calculatingRoute, setCalculatingRoute] = useState(false);
-  const [searchingField, setSearchingField] = useState<'origin' | 'destination' | null>(null);
-  const [suggestions, setSuggestions] = useState<{ label: string; lat: number; lng: number }[]>([]);
+  const {
+    routes,
+    loading: calculatingRoute,
+    error: routeError,
+    retryable,
+    retry: retryRoute,
+  } = useRoutes(from.coord, to.coord, { mode: travelMode, ...NO_AVOID });
+  const navRoute = routes[selRoute] ?? null; // the chosen route, with its turn-by-turn steps
+  useEffect(() => setSelRoute(0), [routes]);
 
   // ─── Maintenance State ───
   const [maintenanceRecords, setMaintenanceRecords] = useState<Maintenance[]>([]);
@@ -108,16 +116,7 @@ export function DriverApp() {
       if (data.length > 0 && !selectedTrip) {
         const current = data.find((tr) => ACTIVE_STATUSES.includes(tr.status)) ?? data[0];
         setSelectedTrip(current);
-        if (current) {
-          setOrigin(current.origin);
-          setDestination(current.destination);
-          if (current.originLat && current.originLng) {
-            setOrigCoord({ lat: current.originLat, lng: current.originLng });
-          }
-          if (current.destLat && current.destLng) {
-            setDestCoord({ lat: current.destLat, lng: current.destLng });
-          }
-        }
+        if (current) loadTripIntoNav(current);
       }
     }).catch(() => {});
   }, [driverId]);
@@ -179,126 +178,22 @@ export function DriverApp() {
     });
   }, [trips, calQuery]);
 
+  // ─── Show a trip's route in the navigation tab ───
+  // Uses the trip's saved coordinates; for older trips saved without them the address is looked up.
+  // It never substitutes made-up coordinates for a real address.
+  function loadTripIntoNav(tr: Trip) {
+    if (tr.originLat != null && tr.originLng != null) wp.setPlace('from', { label: tr.origin, coord: { lat: tr.originLat, lng: tr.originLng } });
+    else void wp.resolve('from', tr.origin);
+    if (tr.destLat != null && tr.destLng != null) wp.setPlace('to', { label: tr.destination, coord: { lat: tr.destLat, lng: tr.destLng } });
+    else void wp.resolve('to', tr.destination);
+  }
+
   // ─── Start Navigation for Trip (Called from Calendar or List) ───
   const startNavForTrip = (tr: Trip) => {
     setSelectedTrip(tr);
-    setOrigin(tr.origin);
-    setDestination(tr.destination);
-    const oLat = tr.originLat ?? DEFAULT_ORIGIN.coord.lat;
-    const oLng = tr.originLng ?? DEFAULT_ORIGIN.coord.lng;
-    const dLat = tr.destLat ?? DEFAULT_DESTINATION.coord.lat;
-    const dLng = tr.destLng ?? DEFAULT_DESTINATION.coord.lng;
-    setOrigCoord({ lat: oLat, lng: oLng });
-    setDestCoord({ lat: dLat, lng: dLng });
+    loadTripIntoNav(tr);
     setActiveTab('navigation');
   };
-
-  // ─── Swap Origin & Destination ───
-  const swapWaypoints = () => {
-    const tempName = origin;
-    setOrigin(destination);
-    setDestination(tempName);
-
-    const tempCoord = origCoord;
-    setOrigCoord(destCoord);
-    setDestCoord(tempCoord);
-  };
-
-  // ─── Use Current GPS for Origin ───
-  const useCurrentGps = () => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setOrigCoord({ lat: latitude, lng: longitude });
-        setOrigin('موقعي الحالي (GPS)');
-      },
-      () => alert('يرجى تفعيل خدمة الموقع في جوالك'),
-      { enableHighAccuracy: true }
-    );
-  };
-
-  // ─── Address Autocomplete & Search ───
-  const handleAddressSearch = async (val: string, field: 'origin' | 'destination') => {
-    if (field === 'origin') setOrigin(val);
-    else setDestination(val);
-
-    if (val.length >= 3) {
-      setSearchingField(field);
-      try {
-        const res = await api.geo.search(val, 5);
-        setSuggestions(res);
-      } catch {
-        setSuggestions([]);
-      }
-    } else {
-      setSuggestions([]);
-      setSearchingField(null);
-    }
-  };
-
-  const selectSuggestion = (s: { label: string; lat: number; lng: number }) => {
-    if (searchingField === 'origin') {
-      setOrigin(s.label);
-      setOrigCoord({ lat: s.lat, lng: s.lng });
-    } else if (searchingField === 'destination') {
-      setDestination(s.label);
-      setDestCoord({ lat: s.lat, lng: s.lng });
-    }
-    setSuggestions([]);
-    setSearchingField(null);
-  };
-
-  // ─── Calculate Route Whenever Orig & Dest change ───
-  useEffect(() => {
-    if (!origCoord || !destCoord) {
-      setRoute(null);
-      setNavRoute(null);
-      setRouteInfo(null);
-      return;
-    }
-
-    let cancelled = false;
-    setCalculatingRoute(true);
-
-    api.geo
-      .route(origCoord, destCoord, travelMode, false)
-      .then((res) => {
-        if (cancelled) return;
-        if (res.geometry?.coordinates) {
-          setNavRoute(res.routes?.[0] ?? res);
-          setRoute(res.geometry.coordinates);
-          setRouteInfo({ distance: res.distance, duration: res.duration });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setRoute(null);
-          setNavRoute(null);
-          // Fallback approximate calculation
-          const R = 6371;
-          const dLat = ((destCoord.lat - origCoord.lat) * Math.PI) / 180;
-          const dLon = ((destCoord.lng - origCoord.lng) * Math.PI) / 180;
-          const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos((origCoord.lat * Math.PI) / 180) *
-              Math.cos((destCoord.lat * Math.PI) / 180) *
-              Math.sin(dLon / 2) *
-              Math.sin(dLon / 2);
-          const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-          setRouteInfo({
-            distance: d * 1000,
-            duration: Math.max(d * 1.6 * 60, 300),
-          });
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setCalculatingRoute(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [origCoord, destCoord, travelMode]);
 
   // ─── Send Position to Server ───
   const sendPosition = useCallback(() => {
@@ -377,39 +272,22 @@ export function DriverApp() {
   // Map Points for Navigation View
   const points = useMemo<MapPoint[]>(() => {
     const list: MapPoint[] = [];
-    if (origCoord) {
-      list.push({
-        id: 'origin',
-        lat: origCoord.lat,
-        lng: origCoord.lng,
-        title: origin || 'الانطلاق',
-        color: '#137333',
-      });
-    }
-    if (destCoord) {
-      list.push({
-        id: 'dest',
-        lat: destCoord.lat,
-        lng: destCoord.lng,
-        title: destination || 'الوجهة',
-        color: '#d93025',
-      });
-    }
+    if (from.coord) list.push({ id: 'origin', lat: from.coord.lat, lng: from.coord.lng, title: from.label || 'الانطلاق', color: '#137333' });
+    if (to.coord) list.push({ id: 'dest', lat: to.coord.lat, lng: to.coord.lng, title: to.label || 'الوجهة', color: '#d93025' });
     return list;
-  }, [origCoord, destCoord, origin, destination]);
+  }, [from, to]);
 
   // In-app turn-by-turn navigation (live GPS when the start point is "my location", otherwise a preview)
-  const originIsGps = origin.startsWith('موقعي الحالي');
 
   return (
     <div className="min-h-screen bg-bg pb-20 md:pb-10">
-      {navOpen && navRoute && origCoord && destCoord && (
+      {navOpen && navRoute && from.coord && to.coord && (
         <NavigationScreen
-          origin={{ label: origin, coord: origCoord }}
-          destination={{ label: destination, coord: destCoord }}
+          origin={{ label: from.label, coord: from.coord }}
+          destination={{ label: to.label, coord: to.coord }}
           mode={travelMode}
           route={navRoute}
-          startWithGps={originIsGps}
+          startWithGps={fromIsGps}
           onExit={() => setNavOpen(false)}
         />
       )}
@@ -621,137 +499,87 @@ export function DriverApp() {
                   </div>
                 </div>
 
-                {/* Unified Google Maps Search Box */}
-                <div className="relative rounded-xl border border-border bg-surface2/60 p-2 focus-within:border-blue-500 transition">
-                  <div className="flex items-center gap-2">
-                    {/* Visual Route Indicator Dots & Dotted Line */}
-                    <div className="flex flex-col items-center justify-between py-1 self-stretch shrink-0">
-                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-emerald-500/20" title="نقطة الانطلاق (A)" />
-                      <div className="w-0.5 flex-1 my-1 border-s-2 border-dotted border-muted/50" />
-                      <span className="h-2.5 w-2.5 rounded-sm bg-red-500 ring-2 ring-red-500/20" title="الوجهة (B)" />
-                    </div>
-
-                    {/* Inputs */}
-                    <div className="flex-1 min-w-0 space-y-1.5">
-                      {/* Origin Input */}
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <input
-                          type="text"
-                          value={origin}
-                          onChange={(e) => handleAddressSearch(e.target.value, 'origin')}
-                          placeholder="حدد نقطة الانطلاق..."
-                          className="w-full bg-transparent text-xs text-fg placeholder-muted focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={useCurrentGps}
-                          title="استخدام موقعي الحالي"
-                          className="text-[10px] text-blue-500 hover:underline shrink-0 font-medium whitespace-nowrap bg-blue-500/10 px-1.5 py-0.5 rounded"
-                        >
-                          📍 موقعي
-                        </button>
-                        {origin && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOrigin('');
-                              setOrigCoord(null);
-                            }}
-                            className="text-xs text-muted hover:text-fg shrink-0 p-0.5"
-                            title="إلغاء الموقع"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="border-t border-border/50" />
-
-                      {/* Destination Input */}
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <input
-                          type="text"
-                          value={destination}
-                          onChange={(e) => handleAddressSearch(e.target.value, 'destination')}
-                          placeholder="حدد الوجهة أو أضف موقعاً جديداً..."
-                          className="w-full bg-transparent text-xs text-fg placeholder-muted focus:outline-none"
-                        />
-                        {destination && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDestination('');
-                              setDestCoord(null);
-                            }}
-                            className="text-xs text-muted hover:text-fg shrink-0 p-0.5"
-                            title="إلغاء الموقع"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Swap Button on the Side */}
+                {/* Search boxes: suggestions as you type, "my location", swap */}
+                <div className="relative space-y-1.5">
+                  <PlaceInput
+                    value={wp.fromText}
+                    badge="A"
+                    badgeClass="bg-emerald-600"
+                    placeholder="حدد نقطة الانطلاق..."
+                    unresolved={fromDirty || (!!wp.fromText && !from.coord)}
+                    onChange={(t) => wp.setText('from', t)}
+                    onPick={(pl) => wp.setPlace('from', { label: pl.label, coord: { lat: pl.lat, lng: pl.lng } })}
+                    onClear={() => wp.clear('from')}
+                    onUseCurrentLocation={() => wp.useMyLocation('from')}
+                  />
+                  <div className="flex justify-end pe-3 -my-1 relative z-10">
                     <button
                       type="button"
-                      onClick={swapWaypoints}
+                      onClick={wp.swap}
                       title="تبديل نقطة الانطلاق والوجهة"
-                      className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-surface border border-border text-muted shadow-sm hover:text-fg hover:border-blue-500 transition active:scale-95"
+                      className="grid h-6 w-6 place-items-center rounded-full bg-surface border border-border text-muted shadow-sm hover:text-fg hover:border-blue-500 transition active:scale-95 text-xs"
                     >
                       ⇅
                     </button>
                   </div>
-
-                  {/* Autocomplete Suggestions Dropdown */}
-                  {suggestions.length > 0 && searchingField && (
-                    <div className="absolute top-full start-0 end-0 z-50 mt-1 max-h-44 overflow-y-auto rounded-xl border border-border bg-surface p-1 shadow-2xl text-xs">
-                      {suggestions.map((s, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => selectSuggestion(s)}
-                          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-start text-fg hover:bg-surface2 transition"
-                        >
-                          <span className="shrink-0">📍</span>
-                          <span className="truncate text-xs">{s.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  <PlaceInput
+                    value={wp.toText}
+                    badge="B"
+                    badgeClass="bg-red-600"
+                    placeholder="حدد الوجهة..."
+                    unresolved={toDirty || (!!wp.toText && !to.coord)}
+                    onChange={(t) => wp.setText('to', t)}
+                    onPick={(pl) => wp.setPlace('to', { label: pl.label, coord: { lat: pl.lat, lng: pl.lng } })}
+                    onClear={() => wp.clear('to')}
+                  />
+                  {wp.geoMsg && <p className="ps-1 text-[11px] text-amber-600">{wp.geoMsg}</p>}
                 </div>
 
-                {/* Route Summary (ETA & Distance) */}
-                {calculatingRoute ? (
-                  <p className="text-[11px] text-muted text-center animate-pulse py-1">
-                    جارٍ حساب مسار الملاحة...
-                  </p>
-                ) : routeInfo ? (
-                  <div className="flex items-center justify-between bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-2">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-xl font-black text-blue-600">
-                        {Math.round(routeInfo.duration / 60)} دقيقة
-                      </span>
-                      <span className="text-xs text-muted font-medium">
-                        ({(routeInfo.distance / 1000).toFixed(1)} كم)
-                      </span>
-                    </div>
-                    <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-emerald-600 font-bold text-[10px]">
-                      أسرع مسار ✓
-                    </span>
+                {/* Route options */}
+                {calculatingRoute && <p className="text-[11px] text-muted text-center animate-pulse py-1">جارٍ حساب مسار الملاحة...</p>}
+                {routeError && !calculatingRoute && (
+                  <div className="flex items-center justify-between gap-2 rounded-xl bg-red-500/10 px-2.5 py-2 text-xs text-red-600">
+                    <span>{routeError}</span>
+                    {retryable && (
+                      <button type="button" onClick={retryRoute} className="shrink-0 rounded-lg bg-red-600 px-2 py-1 font-bold text-white">
+                        إعادة المحاولة
+                      </button>
+                    )}
                   </div>
-                ) : null}
+                )}
+                {routes.length > 0 && !calculatingRoute && (
+                  <div className="flex snap-x gap-2 overflow-x-auto pb-1" role="radiogroup" aria-label="خيارات المسار">
+                    {routes.map((r, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        role="radio"
+                        aria-checked={i === selRoute}
+                        onClick={() => setSelRoute(i)}
+                        className={`w-40 shrink-0 snap-start rounded-xl border px-2.5 py-2 text-start transition ${
+                          i === selRoute ? 'border-blue-500 bg-blue-500/10' : 'border-border bg-surface2 hover:border-blue-400'
+                        }`}
+                      >
+                        <div className={`text-lg font-black leading-none ${i === selRoute ? 'text-blue-600' : 'text-fg'}`}>{formatDuration(r.duration)}</div>
+                        <div className="mt-1 truncate text-[11px] text-muted">
+                          {formatDistance(r.distance)}
+                          {r.summary ? ` • عبر ${r.summary}` : ''}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-                {/* Big Google Navigation Button */}
+                {/* Start in-app navigation */}
                 <button
                   type="button"
                   onClick={() => setNavOpen(true)}
-                  disabled={!navRoute || calculatingRoute}
+                  disabled={!navRoute || calculatingRoute || fromDirty || toDirty}
                   data-testid="driver-start-nav"
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-blue-600/30 transition hover:bg-blue-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span className="text-sm">🧭</span>
-                  <span>{calculatingRoute ? 'جارٍ حساب المسار…' : 'بدء الملاحة'}</span>
+                  <span>{calculatingRoute ? 'جارٍ حساب المسار…' : fromDirty || toDirty ? 'اختر الأماكن من الاقتراحات' : 'بدء الملاحة'}</span>
                 </button>
               </Card>
 
@@ -813,9 +641,9 @@ export function DriverApp() {
                 <div className="h-[280px] sm:h-[350px] md:h-[520px] w-full">
                   <MapView
                     points={points}
-                    route={route}
+                    route={navRoute ? navRoute.geometry.coordinates : null}
                     height="100%"
-                    center={origCoord ?? mapConfig.defaultCenter}
+                    center={from.coord ?? mapConfig.defaultCenter}
                     zoom={13}
                   />
                 </div>

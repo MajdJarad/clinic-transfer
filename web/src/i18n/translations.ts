@@ -120,8 +120,8 @@ const ar: Dict = {
   'tripForm.notes': 'ملاحظات',
   'tripForm.create': 'إنشاء الرحلة',
   'tripForm.saveChanges': 'حفظ التعديلات',
-  'tripForm.phOrigin': 'مطار الملك خالد',
-  'tripForm.phDestination': 'فندق الرياض',
+  'tripForm.phOrigin': 'مطار إسطنبول',
+  'tripForm.phDestination': 'فندق في تقسيم',
 
   'tripDetail.title': 'تفاصيل الرحلة',
   'tripDetail.type': 'النوع',
@@ -417,8 +417,8 @@ const en: Dict = {
   'tripForm.notes': 'Notes',
   'tripForm.create': 'Create trip',
   'tripForm.saveChanges': 'Save changes',
-  'tripForm.phOrigin': 'King Khalid Airport',
-  'tripForm.phDestination': 'Riyadh Hotel',
+  'tripForm.phOrigin': 'Istanbul Airport',
+  'tripForm.phDestination': 'Hotel in Taksim',
 
   'tripDetail.title': 'Trip details',
   'tripDetail.type': 'Type',
@@ -714,8 +714,8 @@ const tr: Dict = {
   'tripForm.notes': 'Notlar',
   'tripForm.create': 'Sefer oluştur',
   'tripForm.saveChanges': 'Değişiklikleri kaydet',
-  'tripForm.phOrigin': 'Kral Halid Havalimanı',
-  'tripForm.phDestination': 'Riyad Oteli',
+  'tripForm.phOrigin': 'İstanbul Havalimanı',
+  'tripForm.phDestination': 'Taksim’de otel',
 
   'tripDetail.title': 'Sefer detayları',
   'tripDetail.type': 'Tür',
