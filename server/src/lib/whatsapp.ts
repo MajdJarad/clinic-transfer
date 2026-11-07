@@ -1,4 +1,5 @@
 import { env } from '../env';
+import { DEFAULT_WHATSAPP_TEMPLATE, renderTemplate } from './settings';
 
 /**
  * WhatsApp is intentionally NOT integrated via an API.
@@ -25,22 +26,20 @@ export interface ArrivalMessageInput {
   driverPhone?: string | null;
 }
 
-export function buildArrivalMessage(input: ArrivalMessageInput): string {
-  const vehicle = `${input.vehicleMake} ${input.vehicleModel}`.trim();
-  const color = input.vehicleColor ? ` (${input.vehicleColor})` : '';
-  return [
-    `مرحباً ${input.patientName}،`,
-    '',
-    `سيارة العيادة وصلت الآن إلى موقعك.`,
-    `السيارة: ${vehicle}${color}`,
-    `رقم اللوحة: ${input.vehiclePlate}`,
-    `السائق: ${input.driverName}${input.driverPhone ? ` - ${input.driverPhone}` : ''}`,
-    '',
-    'يرجى التوجه إلى السيارة. شكراً لك.',
-  ].join('\n');
+/** The arrival message, from the admin-editable template (see Administration > Messages). */
+export function buildArrivalMessage(input: ArrivalMessageInput, template: string = DEFAULT_WHATSAPP_TEMPLATE): string {
+  return renderTemplate(template, {
+    patientName: input.patientName,
+    vehicleMake: input.vehicleMake,
+    vehicleModel: input.vehicleModel,
+    vehicleColor: input.vehicleColor,
+    vehiclePlate: input.vehiclePlate,
+    driverName: input.driverName,
+    driverPhone: input.driverPhone,
+  });
 }
 
-export function buildWhatsAppLink(phone: string, message: string): string {
-  const normalized = normalizePhone(phone);
+export function buildWhatsAppLink(phone: string, message: string, countryCode?: string): string {
+  const normalized = normalizePhone(phone, countryCode);
   return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
 }

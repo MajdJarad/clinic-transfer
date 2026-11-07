@@ -21,8 +21,8 @@ interface PlaceInputProps {
   onClear: () => void;
   onUseCurrentLocation?: () => void; // shows a "my location" row at the top
   placeholder: string;
-  badge: string;
-  badgeClass: string;
+  badge?: string;
+  badgeClass?: string;
   /** Set when the text was edited but no suggestion has been chosen yet. */
   unresolved?: boolean;
 }
@@ -125,9 +125,11 @@ export function PlaceInput({
           unresolved ? 'border-amber-500/70' : 'border-border'
         }`}
       >
-        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white font-bold text-[10px] ${badgeClass}`}>
-          {badge}
-        </span>
+        {badge && (
+          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white font-bold text-[10px] ${badgeClass ?? ''}`}>
+            {badge}
+          </span>
+        )}
         <input
           ref={inputRef}
           type="text"

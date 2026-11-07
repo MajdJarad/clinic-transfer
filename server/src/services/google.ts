@@ -4,6 +4,7 @@
 //   Geocoding API         - reverse geocoding (tap on the map -> address)
 import { env, googleMapsEnabled } from '../env';
 import { HttpError } from '../lib/http';
+import { TtlCache } from '../lib/ttlCache';
 
 export type LatLng = { lat: number; lng: number };
 
@@ -34,6 +35,8 @@ export interface RouteResult {
 
 export interface RouteOptions {
   mode: 'driving' | 'walking';
+  /** Plan for a future departure (traffic is estimated for that time). Ignored if not in the future. */
+  departureTime?: Date;
   alternatives: boolean;
   avoidTolls: boolean;
   avoidHighways: boolean;
@@ -178,8 +181,24 @@ function toRouteResult(r: GoogleRoute): RouteResult | null {
   };
 }
 
+// Every Google call is billed: identical requests within a short window are answered from memory.
+// Routes are cached briefly (traffic changes); addresses and places are stable, so they last a day.
+const routeCache = new TtlCache<RouteResult[]>(60_000, 300);
+const placeCache = new TtlCache<PlaceDetails>(24 * 3600_000, 1000);
+const addressCache = new TtlCache<string | null>(24 * 3600_000, 1000);
+
+const r5 = (n: number) => n.toFixed(5);
+
 export async function computeRoutes(from: LatLng, to: LatLng, opts: RouteOptions): Promise<RouteResult[]> {
   assertGoogleConfigured();
+  const departure = opts.departureTime && opts.departureTime.getTime() > Date.now() + 30_000 ? opts.departureTime : undefined;
+  const cacheKey = JSON.stringify([
+    r5(from.lat), r5(from.lng), r5(to.lat), r5(to.lng),
+    opts.mode, opts.alternatives, opts.avoidTolls, opts.avoidHighways, opts.avoidFerries,
+    departure ? Math.floor(departure.getTime() / 60_000) : 'now',
+  ]);
+  const cached = routeCache.get(cacheKey);
+  if (cached) return cached;
   const walking = opts.mode === 'walking';
   const body: Record<string, unknown> = {
     origin: { location: { latLng: { latitude: from.lat, longitude: from.lng } } },
@@ -192,6 +211,7 @@ export async function computeRoutes(from: LatLng, to: LatLng, opts: RouteOptions
   if (!walking) {
     body.routingPreference = 'TRAFFIC_AWARE';
     body.extraComputations = ['TRAFFIC_ON_POLYLINE'];
+    if (departure) body.departureTime = departure.toISOString();
     if (opts.avoidTolls || opts.avoidHighways || opts.avoidFerries) {
       body.routeModifiers = {
         avoidTolls: opts.avoidTolls,
@@ -219,12 +239,13 @@ export async function computeRoutes(from: LatLng, to: LatLng, opts: RouteOptions
   const data = (await r.json()) as { routes?: GoogleRoute[] };
   const routes = (data.routes ?? []).map(toRouteResult).filter((x): x is RouteResult => x !== null);
   if (!routes.length) throw new HttpError(404, 'No route found');
+  routeCache.set(cacheKey, routes);
   return routes;
 }
 
 // ───────────────────────── Places API (New) ─────────────────────────
 
-export async function autocompletePlaces(input: string, session?: string): Promise<PlaceSuggestion[]> {
+export async function autocompletePlaces(input: string, session: string | undefined, bias: LatLng): Promise<PlaceSuggestion[]> {
   assertGoogleConfigured();
   const r = await gfetch(
     'https://places.googleapis.com/v1/places:autocomplete',
@@ -235,7 +256,7 @@ export async function autocompletePlaces(input: string, session?: string): Promi
         input,
         languageCode: 'ar',
         locationBias: {
-          circle: { center: { latitude: env.mapCenterLat, longitude: env.mapCenterLng }, radius: 50000 },
+          circle: { center: { latitude: bias.lat, longitude: bias.lng }, radius: 50000 },
         },
         ...(session ? { sessionToken: session } : {}),
       }),
@@ -267,6 +288,8 @@ export async function autocompletePlaces(input: string, session?: string): Promi
 
 export async function getPlace(placeId: string, session?: string): Promise<PlaceDetails> {
   assertGoogleConfigured();
+  const cachedPlace = placeCache.get(placeId);
+  if (cachedPlace) return cachedPlace;
   const qs = new URLSearchParams({ languageCode: 'ar' });
   if (session) qs.set('sessionToken', session);
   const r = await gfetch(
@@ -290,12 +313,14 @@ export async function getPlace(placeId: string, session?: string): Promise<Place
   if (!p.location) throw new HttpError(404, 'Place has no location');
   const name = p.displayName?.text ?? '';
   const addr = p.formattedAddress ?? '';
-  return {
+  const place: PlaceDetails = {
     label: name && addr && !addr.startsWith(name) ? `${name}، ${addr}` : addr || name,
     name,
     lat: p.location.latitude,
     lng: p.location.longitude,
   };
+  placeCache.set(placeId, place);
+  return place;
 }
 
 // ───────────────────────── Geocoding API ─────────────────────────
@@ -303,13 +328,21 @@ export async function getPlace(placeId: string, session?: string): Promise<Place
 /** Address for a coordinate; null when Google has nothing for it. */
 export async function reverseGeocode(p: LatLng): Promise<string | null> {
   assertGoogleConfigured();
+  const key = `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`; // ~11 m
+  const hit = addressCache.get(key);
+  if (hit !== undefined) return hit;
   const qs = new URLSearchParams({ latlng: `${p.lat},${p.lng}`, language: 'ar', key: env.googleMapsApiKey });
   const r = await gfetch(`https://maps.googleapis.com/maps/api/geocode/json?${qs}`, {}, 6000, 'Google Geocoding');
   if (!r.ok) throw new HttpError(502, `Google Geocoding error (${r.status})`);
   const data = (await r.json()) as { status: string; results?: { formatted_address: string; types: string[] }[] };
-  if (data.status === 'ZERO_RESULTS') return null;
+  if (data.status === 'ZERO_RESULTS') {
+    addressCache.set(key, null);
+    return null;
+  }
   if (data.status !== 'OK') throw new HttpError(502, `Google Geocoding error (${data.status})`);
   const results = data.results ?? [];
   const best = results.find((x) => !x.types.includes('plus_code')) ?? results[0];
-  return best?.formatted_address ?? null;
+  const label = best?.formatted_address ?? null;
+  addressCache.set(key, label);
+  return label;
 }

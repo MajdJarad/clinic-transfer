@@ -4,6 +4,7 @@ import { tripTypeSchema, tripStatusSchema } from '../constants';
 import { prisma } from '../db';
 import { asyncHandler, HttpError } from '../lib/http';
 import { authenticate, requireRole } from '../middleware/auth';
+import { getSettings } from '../lib/settings';
 import { buildArrivalMessage, buildWhatsAppLink, normalizePhone } from '../lib/whatsapp';
 
 export const tripsRouter = Router();
@@ -258,21 +259,26 @@ tripsRouter.get(
       throw new HttpError(400, 'Trip has no assigned driver/vehicle yet');
     }
 
-    const text = buildArrivalMessage({
-      patientName: trip.patientName,
-      vehicleMake: trip.vehicle.make,
-      vehicleModel: trip.vehicle.model,
-      vehiclePlate: trip.vehicle.plate,
-      vehicleColor: trip.vehicle.color,
-      driverName: trip.driver.user.name,
-      driverPhone: trip.driver.user.phone,
-    });
+    // Template and country code are admin-editable (Administration > Messages / Settings).
+    const settings = await getSettings();
+    const text = buildArrivalMessage(
+      {
+        patientName: trip.patientName,
+        vehicleMake: trip.vehicle.make,
+        vehicleModel: trip.vehicle.model,
+        vehiclePlate: trip.vehicle.plate,
+        vehicleColor: trip.vehicle.color,
+        driverName: trip.driver.user.name,
+        driverPhone: trip.driver.user.phone,
+      },
+      settings.whatsappTemplate,
+    );
 
     res.json({
       phone: trip.patientPhone,
-      normalizedPhone: normalizePhone(trip.patientPhone),
+      normalizedPhone: normalizePhone(trip.patientPhone, settings.defaultCountryCode),
       text,
-      link: buildWhatsAppLink(trip.patientPhone, text),
+      link: buildWhatsAppLink(trip.patientPhone, text, settings.defaultCountryCode),
     });
   }),
 );

@@ -1,10 +1,12 @@
 import type {
+  AppSettings,
   ArrivalMessage,
   AuthUser,
   DashboardSummary,
   Driver,
   Maintenance,
   Patient,
+  SystemInfo,
   TrackingDriver,
   Trip,
   UserRecord,
@@ -73,6 +75,7 @@ export const api = {
       googleMapsApiKey: string;
       googleMapId: string;
       traccarEnabled: boolean;
+      clinicName: string;
       defaultCenter: { lat: number; lng: number };
       defaultZoom: number;
     }>('/config'),
@@ -82,11 +85,12 @@ export const api = {
     route: (
       from: { lat: number; lng: number },
       to: { lat: number; lng: number },
-      o: { mode?: 'driving' | 'walking'; alternatives?: boolean; avoidTolls?: boolean; avoidHighways?: boolean; avoidFerries?: boolean } = {},
+      o: { mode?: 'driving' | 'walking'; alternatives?: boolean; avoidTolls?: boolean; avoidHighways?: boolean; avoidFerries?: boolean; departureTime?: string } = {},
     ) =>
       request<GeoRouteResponse>(
         `/geo/route?from=${from.lat},${from.lng}&to=${to.lat},${to.lng}&mode=${o.mode ?? 'driving'}` +
-          `&alt=${o.alternatives === false ? 0 : 1}&tolls=${o.avoidTolls ? 1 : 0}&highways=${o.avoidHighways ? 1 : 0}&ferries=${o.avoidFerries ? 1 : 0}`,
+          `&alt=${o.alternatives === false ? 0 : 1}&tolls=${o.avoidTolls ? 1 : 0}&highways=${o.avoidHighways ? 1 : 0}&ferries=${o.avoidFerries ? 1 : 0}` +
+          (o.departureTime ? `&depart=${encodeURIComponent(o.departureTime)}` : ''),
       ),
     autocomplete: (q: string, session: string) =>
       request<{ placeId: string; main: string; secondary: string }[]>(
@@ -99,6 +103,15 @@ export const api = {
     // Address of a point picked on the map (always returns a usable label).
     reverse: (lat: number, lng: number) =>
       request<{ label: string; lat: number; lng: number; resolved: boolean }>(`/geo/reverse?at=${lat},${lng}`),
+  },
+
+  settings: {
+    get: () => request<{ settings: AppSettings; defaults: AppSettings; system: SystemInfo }>('/settings'),
+    update: (patch: Partial<AppSettings>) =>
+      request<{ settings: AppSettings; warnings: string[] }>('/settings', { method: 'PUT', body: JSON.stringify(patch) }),
+    reset: () => request<{ settings: AppSettings }>('/settings/reset', { method: 'POST' }),
+    preview: (template: string) =>
+      request<{ text: string; unknown: string[] }>('/settings/preview', { method: 'POST', body: JSON.stringify({ template }) }),
   },
 
   dashboard: () => request<DashboardSummary>('/dashboard/summary'),

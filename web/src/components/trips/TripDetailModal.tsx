@@ -48,6 +48,7 @@ export function TripDetailModal({ trip, onClose, onEdit, onAssign, onWhatsApp, o
     if (tr.patientPhone) params.set('phone', tr.patientPhone);
     if (tr.driver?.user.name) params.set('driver', tr.driver.user.name);
     params.set('tripId', tr.id);
+    params.set('depart', tr.scheduledAt); // traffic is estimated for the trip's own time
 
     onClose();
     navigate(`/map?${params.toString()}`);
