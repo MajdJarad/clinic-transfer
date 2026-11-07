@@ -65,6 +65,8 @@ interface TimeGridViewProps {
   onEventClick: (trip: Trip) => void;
   onEventMove: (trip: Trip, newStart: Date, newEnd: Date) => void;
   onDayHeaderClick?: (day: Date) => void;
+  /** Look only: trips open on tap, but cannot be dragged and empty slots do not create anything. */
+  readOnly?: boolean;
 }
 
 export function TimeGridView({
@@ -76,6 +78,7 @@ export function TimeGridView({
   onEventClick,
   onEventMove,
   onDayHeaderClick,
+  readOnly = false,
 }: TimeGridViewProps) {
   const { t, intl } = useI18n();
   const bodyHeight = HOURS * hourHeight;
@@ -145,10 +148,15 @@ export function TimeGridView({
   const startDrag = (e: React.PointerEvent, trip: Trip) => {
     e.stopPropagation();
     e.preventDefault();
+    if (readOnly) {
+      onEventClick(trip);
+      return;
+    }
     setDrag({ trip, startX: e.clientX, startY: e.clientY, dMinutes: 0, dDays: 0, moved: false });
   };
 
   const slotClick = (day: Date, e: React.MouseEvent<HTMLDivElement>) => {
+    if (readOnly) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const y = e.clientY - rect.top;
     const minutes = Math.min(HOURS * 60 - SNAP, Math.max(0, Math.floor((y / hourHeight) * 60 / SNAP) * SNAP));

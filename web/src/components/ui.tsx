@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import { useI18n } from '../i18n';
 
@@ -9,9 +10,9 @@ export function Spinner({ className = '' }: { className?: string }) {
   );
 }
 
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
+export function Card({ children, className = '', 'data-testid': testId }: { children: ReactNode; className?: string; 'data-testid'?: string }) {
   return (
-    <div className={`rounded-2xl border border-border bg-surface shadow-card ${className}`}>
+    <div className={`rounded-2xl border border-border bg-surface shadow-card ${className}`} data-testid={testId}>
       {children}
     </div>
   );
@@ -111,6 +112,13 @@ export function Modal({
   wide?: boolean;
 }) {
   const { t } = useI18n();
+  // Esc closes the dialog.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4 backdrop-blur-sm" onClick={onClose}>

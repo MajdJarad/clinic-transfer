@@ -129,6 +129,26 @@ export interface TrackingDriver {
   activeTrip: { id: string; status: TripStatus; patientName: string; origin: string; destination: string } | null;
 }
 
+export type AlertType = 'PATIENT' | 'VEHICLE' | 'ACCIDENT' | 'OTHER';
+export type AlertStatus = 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED';
+
+/** An urgent alert raised by a driver. */
+export interface AlertItem {
+  id: string;
+  type: AlertType;
+  note: string | null;
+  lat: number | null;
+  lng: number | null;
+  status: AlertStatus;
+  createdAt: string;
+  acknowledgedAt: string | null;
+  acknowledgedBy: string | null;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+  driver: { id: string; name: string; phone: string | null; vehicle: { make: string; model: string; plate: string } | null };
+  trip: { id: string; status: TripStatus; patientName: string; origin: string; destination: string } | null;
+}
+
 export interface DashboardSummary {
   drivers: { total: number; available: number };
   vehicles: { total: number; inMaintenance: number };

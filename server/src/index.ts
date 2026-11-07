@@ -15,6 +15,7 @@ import { maintenanceRouter } from './routes/maintenance';
 import { dashboardRouter } from './routes/dashboard';
 import { geoRouter } from './routes/geo';
 import { settingsRouter } from './routes/settings';
+import { alertsRouter } from './routes/alerts';
 import { getSettings } from './lib/settings';
 
 const app = express();
@@ -23,7 +24,17 @@ app.use(cors());
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'transfer-server' }));
+// Which web build is being served (the hashed main script), so an app left open can notice a newer one.
+function webBuildId(): string | null {
+  try {
+    const html = fs.readFileSync(path.join(webDistDir() ?? '', 'index.html'), 'utf8');
+    return /assets\/(index-[\w-]+)\.js/.exec(html)?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'transfer-server', webBuild: webBuildId() }));
 
 // Public runtime config for the web client.
 // Maps, routing and place search all use Google Maps (GOOGLE_MAPS_API_KEY).
@@ -53,6 +64,7 @@ app.use('/api/maintenance', maintenanceRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/geo', geoRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/alerts', alertsRouter);
 
 // Optionally serve the built web app (production single-port deployment).
 const candidateDistPaths = [
@@ -65,10 +77,24 @@ const candidateDistPaths = [
 ].filter(Boolean) as string[];
 
 const webDist = candidateDistPaths.find((p) => fs.existsSync(p));
+function webDistDir() {
+  return webDist;
+}
 if (webDist) {
   console.log(`Serving web app from ${webDist}`);
-  app.use(express.static(webDist));
-  app.get(/^(?!\/api).*/, (_req, res) => res.sendFile(path.join(webDist, 'index.html')));
+  // The page itself is never cached (so a new deploy reaches everyone at once); the hashed files it
+  // points to never change, so they are cached for good.
+  app.use(
+    express.static(webDist, {
+      setHeaders(res, file) {
+        res.setHeader('Cache-Control', file.endsWith('index.html') ? 'no-store' : 'public, max-age=31536000, immutable');
+      },
+    }),
+  );
+  app.get(/^(?!\/api).*/, (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.sendFile(path.join(webDist, 'index.html'));
+  });
 } else {
   console.log('web/dist not found, running API only');
 }

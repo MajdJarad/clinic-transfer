@@ -5,6 +5,7 @@ import { prisma } from '../db';
 import { traccarEnabled } from '../env';
 import { asyncHandler, HttpError } from '../lib/http';
 import { rateLimit } from '../lib/rateLimit';
+import { progressTripFromPosition } from '../lib/tripProgress';
 import { fetchLatestPositions, parseDeviceId } from '../lib/traccar';
 import { authenticate, requireRole } from '../middleware/auth';
 
@@ -93,7 +94,9 @@ driversRouter.post(
       },
       select: { id: true, lat: true, lng: true, lastSeen: true },
     });
-    res.json(driver);
+    // The trip follows the driver: arrived / picked up / completed are decided from this position.
+    const moved = await progressTripFromPosition(driver.id, { lat, lng, accuracy }).catch(() => null);
+    res.json({ ...driver, tripUpdate: moved });
   }),
 );
 

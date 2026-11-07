@@ -42,6 +42,7 @@ model Driver {
   traccarDeviceId String?
   vehicle         Vehicle?
   trips           Trip[]
+  alerts          Alert[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }
@@ -130,4 +131,23 @@ model Setting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// An urgent alert a driver raises (a problem with the patient or the car, an accident...).
+// Coordinators see it at once, everywhere in the app, until someone takes it over.
+model Alert {
+  id             String    @id @default(cuid())
+  driverId       String
+  driver         Driver    @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  tripId         String?
+  type           String    // PATIENT | VEHICLE | ACCIDENT | OTHER
+  note           String?
+  lat            Float?
+  lng            Float?
+  status         String    @default("OPEN") // OPEN | ACKNOWLEDGED | RESOLVED
+  createdAt      DateTime  @default(now())
+  acknowledgedAt DateTime?
+  acknowledgedBy String?
+  resolvedAt     DateTime?
+  resolvedBy     String?
 }

@@ -5,12 +5,16 @@ import { useClinicName } from '../config';
 import { useI18n } from '../i18n';
 import { roleKeys } from '../labels';
 import { LanguageSelect, ThemeToggle } from './Controls';
+import { AlertsBanner } from '../features/alerts/AlertsBanner';
+import { AlertsProvider, useAlerts } from '../features/alerts/AlertsProvider';
 
 interface NavItem {
   to: string;
   key: string;
   icon: ReactNode;
   adminOnly?: boolean;
+  /** Shows the number of unclaimed driver alerts. */
+  alertsBadge?: boolean;
 }
 
 const icon = (path: ReactNode) => (
@@ -24,6 +28,7 @@ const NAV: NavItem[] = [
   { to: '/trips', key: 'nav.calendar', icon: icon(<><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></>) },
   { to: '/trips-list', key: 'nav.tripsList', icon: icon(<><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></>) },
   { to: '/map', key: 'nav.map', icon: icon(<><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" /><line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" /></>) },
+  { to: '/alerts', key: 'nav.alerts', alertsBadge: true, icon: icon(<><path d="M12 3 2 21h20L12 3z" /><path d="M12 10v5M12 18h.01" /></>) },
   { to: '/tracking', key: 'nav.tracking', icon: icon(<><path d="M12 21s-7-5.3-7-11a7 7 0 0 1 14 0c0 5.7-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></>) },
   { to: '/drivers', key: 'nav.drivers', icon: icon(<><circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /></>) },
   { to: '/vehicles', key: 'nav.vehicles', icon: icon(<><path d="M5 16l1.5-5A2 2 0 0 1 8.4 9.5h7.2a2 2 0 0 1 1.9 1.5L19 16" /><path d="M5 16h14v3H5z" /><circle cx="7.5" cy="19.5" r="1.5" /><circle cx="16.5" cy="19.5" r="1.5" /></>) },
@@ -32,6 +37,25 @@ const NAV: NavItem[] = [
 ];
 
 export function AdminLayout({ children }: { children: ReactNode }) {
+  return (
+    <AlertsProvider>
+      <AlertsBanner />
+      <LayoutInner>{children}</LayoutInner>
+    </AlertsProvider>
+  );
+}
+
+function Badge() {
+  const { openCount } = useAlerts();
+  if (!openCount) return null;
+  return (
+    <span className="ms-auto grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1.5 text-[11px] font-black text-white" data-testid="alerts-badge">
+      {openCount}
+    </span>
+  );
+}
+
+function LayoutInner({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { t } = useI18n();
   const clinicName = useClinicName();
@@ -62,6 +86,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <NavLink key={item.to} to={item.to} end={item.to === '/'} className={({ isActive }) => linkClass(isActive)}>
               {item.icon}
               <span className="truncate">{t(item.key)}</span>
+              {item.alertsBadge && <Badge />}
             </NavLink>
           ))}
         </nav>
@@ -120,6 +145,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             >
               {item.icon}
               {t(item.key)}
+              {item.alertsBadge && <Badge />}
             </NavLink>
           ))}
         </nav>

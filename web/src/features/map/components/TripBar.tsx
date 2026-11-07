@@ -1,34 +1,28 @@
 import { useState } from 'react';
 import { api } from '../../../api';
 import { StatusPill } from '../../../components/ui';
-import { NEXT_ACTION } from '../../../lib/tripFlow';
 import type { Trip } from '../../../types';
 
 interface TripBarProps {
   trip: Trip;
-  onAdvance: (trip: Trip) => Promise<void>;
+  /** Set off (navigate to the current target). Enabled once a route is ready. */
+  onGo: () => void;
+  canGo: boolean;
   statusLabel: string;
 }
 
-/** What the driver needs about the trip on the map screen: which leg, the status, and the two actions. */
-export function TripBar({ trip, onAdvance, statusLabel }: TripBarProps) {
-  const [busy, setBusy] = useState<'advance' | 'notify' | null>(null);
+/**
+ * What the driver needs about the trip on the map screen: which leg, the status, and the only two
+ * actions: "Go" and "Notify the patient". The status itself is never tapped: it follows the car.
+ */
+export function TripBar({ trip, onGo, canGo, statusLabel }: TripBarProps) {
+  const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
-  const next = NEXT_ACTION[trip.status];
   const toDestination = trip.status === 'PICKED_UP';
-
-  const advance = async () => {
-    setBusy('advance');
-    try {
-      await onAdvance(trip);
-    } finally {
-      setBusy(null);
-    }
-  };
 
   // The driver can tell the patient the car is here without ever seeing the number: the server sends it.
   const notify = async () => {
-    setBusy('notify');
+    setBusy(true);
     setNotice('');
     try {
       const r = await api.trips.notifyPatient(trip.id);
@@ -36,7 +30,7 @@ export function TripBar({ trip, onAdvance, statusLabel }: TripBarProps) {
     } catch (e) {
       setNotice(e instanceof Error ? e.message : 'تعذّر إرسال الرسالة');
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   };
 
@@ -52,26 +46,24 @@ export function TripBar({ trip, onAdvance, statusLabel }: TripBarProps) {
         <StatusPill status={trip.status} label={statusLabel} />
       </div>
       <div className="flex gap-2">
-        {next && (
-          <button
-            type="button"
-            onClick={advance}
-            disabled={busy !== null}
-            className="flex-1 rounded-lg bg-brand-600 px-2 py-1.5 text-[11px] font-bold text-white disabled:opacity-60"
-            data-testid="trip-next"
-          >
-            {busy === 'advance' ? '…' : next.label}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onGo}
+          disabled={!canGo}
+          className="flex-1 rounded-lg bg-blue-600 px-2 py-2 text-xs font-bold text-white disabled:opacity-50"
+          data-testid="trip-go"
+        >
+          🧭 انطلاق
+        </button>
         {!toDestination && (
           <button
             type="button"
             onClick={notify}
-            disabled={busy !== null}
-            className="flex-1 rounded-lg bg-emerald-600 px-2 py-1.5 text-[11px] font-bold text-white disabled:opacity-60"
+            disabled={busy}
+            className="flex-1 rounded-lg bg-emerald-600 px-2 py-2 text-xs font-bold text-white disabled:opacity-60"
             data-testid="trip-notify"
           >
-            {busy === 'notify' ? '…' : '📨 إشعار المريض بوصول السيارة'}
+            {busy ? '…' : '📨 تبليغ المريض'}
           </button>
         )}
       </div>
