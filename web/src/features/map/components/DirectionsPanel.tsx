@@ -312,8 +312,13 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition hover:bg-blue-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none sm:py-3 sm:text-sm"
             >
               <span className="text-sm">🧭</span>
-              <span>{p.canStart ? `${wp.fromIsGps ? 'ابدأ الملاحة' : 'معاينة الرحلة'}${summary ? ` • ${summary}` : ''}` : p.startHint || 'ابدأ الملاحة'}</span>
+              <span>{p.canStart ? `ابدأ الملاحة${summary ? ` • ${summary}` : ''}` : p.startHint || 'ابدأ الملاحة'}</span>
             </button>
+            {p.canStart && !wp.fromIsGps && (
+              <p className="text-center text-[10px] text-muted" data-testid="start-from-gps-note">
+                الملاحة تبدأ من موقعك الفعلي (GPS) باتجاه الوجهة.
+              </p>
+            )}
           </div>
         </>
       )}

@@ -239,3 +239,66 @@ export function speakDistance(m: number): string {
 export function arrivalClock(remainingSec: number, now = Date.now()): string {
   return new Date(now + remainingSec * 1000).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 }
+
+// ───────────── Live traffic along the route ─────────────
+
+export interface TrafficZone {
+  speed: 'SLOW' | 'TRAFFIC_JAM'; // the worst condition inside the zone
+  start: number; // meters from the route start
+  end: number;
+}
+
+/** Congested stretches of the route as distances along it; stretches closer than `gap` m are merged. */
+export function trafficZones(m: RouteModel, gap = 150): TrafficZone[] {
+  const last = m.pi.cum.length - 1;
+  const at = (i: number) => m.pi.cum[Math.max(0, Math.min(last, i))];
+  const raw = m.route.traffic
+    .filter((t) => t.speed === 'SLOW' || t.speed === 'TRAFFIC_JAM')
+    .map((t) => ({ speed: t.speed as 'SLOW' | 'TRAFFIC_JAM', start: at(t.from), end: at(t.to) }))
+    .filter((z) => z.end > z.start)
+    .sort((a, b) => a.start - b.start);
+  const zones: TrafficZone[] = [];
+  for (const z of raw) {
+    const prev = zones[zones.length - 1];
+    if (prev && z.start - prev.end <= gap) {
+      prev.end = Math.max(prev.end, z.end);
+      if (z.speed === 'TRAFFIC_JAM') prev.speed = 'TRAFFIC_JAM';
+    } else zones.push({ ...z });
+  }
+  return zones;
+}
+
+export interface TrafficAhead extends TrafficZone {
+  /** Meters until it starts (0 when already inside). */
+  startsIn: number;
+  /** Meters of it still ahead. */
+  length: number;
+  inside: boolean;
+}
+
+/** The next congested stretch within `horizon` meters (or the one the vehicle is in), if any. */
+export function trafficAhead(m: RouteModel, along: number, horizon = 15000): TrafficAhead | null {
+  for (const z of trafficZones(m)) {
+    if (z.end <= along) continue;
+    if (z.start - along > horizon) return null;
+    const inside = z.start <= along;
+    return { ...z, startsIn: Math.max(0, z.start - along), length: z.end - Math.max(z.start, along), inside };
+  }
+  return null;
+}
+
+/**
+ * Whether `b` follows (almost) the same roads as `a`: used to tell a refreshed estimate of the
+ * current route from a genuinely different route. Samples b and checks it lies on a.
+ */
+export function isSameRoute(a: PathIndex, b: PathIndex, tolerance = 40): boolean {
+  if (a.path.length < 2 || b.path.length < 2) return false;
+  const step = Math.max(1, Math.floor(b.path.length / 60));
+  let near = 0;
+  let total = 0;
+  for (let i = 0; i < b.path.length; i += step) {
+    total++;
+    if (snapToPath(a, b.path[i], 0, a.path.length).dist <= tolerance) near++;
+  }
+  return near / total >= 0.85;
+}

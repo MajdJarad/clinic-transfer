@@ -13,9 +13,11 @@ import {
   formatDistance,
   formatDuration,
   haversine,
+  isSameRoute,
   pointAt,
   snapToPath,
   speakDistance,
+  trafficAhead,
   upcomingManeuver,
   type LatLng,
   type Progress,
@@ -30,19 +32,21 @@ export interface NavTarget {
 }
 
 interface NavigationScreenProps {
-  origin: NavTarget;
   destination: NavTarget;
   mode: 'driving' | 'walking';
-  route: RouteData; // the route chosen on the planning screen
-  startWithGps: boolean; // origin is "my location": follow the real GPS; otherwise preview along the route
-  /** Road preferences, kept when the route has to be recalculated. */
+  /** The route shown on the planning screen. Navigation always runs from the real GPS position: if
+   *  that is not on this route, a fresh route from where the vehicle actually is replaces it. */
+  route: RouteData;
+  /** Road preferences, kept whenever the route is recalculated. */
   avoid?: { tolls: boolean; highways: boolean; ferries: boolean };
+  /** Optional action on the arrival card (e.g. the trip's next status: "arrived at the patient"). */
+  arrivalAction?: { label: string; run: () => Promise<void> | void };
   onExit: () => void;
 }
 
-type Source = 'gps' | 'sim';
-const SIM_SPEEDS = [1, 5, 15, 40];
 const MUTE_KEY = 'nav_muted';
+const TRAFFIC_REFRESH_MS = 150_000; // live traffic is re-checked this often
+const SUGGESTION_SNOOZE_MS = 5 * 60_000;
 
 function puckHtml(): string {
   return `<div style="position:relative;width:46px;height:46px;display:flex;align-items:center;justify-content:center">
@@ -65,18 +69,35 @@ function speak(text: string, muted: boolean) {
   }
 }
 
-export function NavigationScreen({ origin, destination, mode, route, startWithGps, avoid, onExit }: NavigationScreenProps) {
+/**
+ * Browsers (iOS Safari especially) only allow speech that was started from a tap. Call this from the
+ * "start navigation" click so the voice guidance that begins later, on the first GPS fix, is allowed.
+ */
+export function unlockSpeech() {
+  try {
+    if ('speechSynthesis' in window) window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+  } catch {
+    /* no speech support: guidance stays visual */
+  }
+}
+
+type Status = 'locating' | 'navigating' | 'rerouting' | 'arrived';
+
+export function NavigationScreen({ destination, mode, route, avoid, arrivalAction, onExit }: NavigationScreenProps) {
   const { googleMapsApiKey, googleMapId } = useMapConfig();
   const { theme } = useTheme();
 
   // ── render state
   const [model, setModel] = useState<RouteModel>(() => buildRouteModel(route));
   const [progress, setProgress] = useState<Progress>(() => computeProgress(buildRouteModel(route), 0));
-  const [source, setSource] = useState<Source>(startWithGps ? 'gps' : 'sim');
-  const [simSpeed, setSimSpeed] = useState(SIM_SPEEDS[1]);
-  const [status, setStatus] = useState<'navigating' | 'rerouting' | 'arrived'>('navigating');
-  const [gpsMsg, setGpsMsg] = useState('');
+  const [status, setStatus] = useState<Status>('locating');
+  const [gpsError, setGpsError] = useState(''); // fatal: no position can be obtained
+  const [gpsNote, setGpsNote] = useState(''); // transient: weak signal
+  const [gpsTry, setGpsTry] = useState(0);
   const [rerouteErr, setRerouteErr] = useState(false);
+  const [speedKmh, setSpeedKmh] = useState<number | null>(null);
+  const [suggest, setSuggest] = useState<{ model: RouteModel; savedSec: number } | null>(null);
+  const [actionState, setActionState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
   const [follow, setFollow] = useState(true);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState('');
@@ -97,30 +118,36 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
   const passedRef = useRef<any>(null);
   const puckRef = useRef<HtmlMarker | null>(null);
   const destPinRef = useRef<HtmlMarker | null>(null);
-  const trafficRef = useRef<any>(null);
+  const trafficLayerRef = useRef<any>(null);
   const modelRef = useRef(model);
-  const sourceRef = useRef(source);
-  const simSpeedRef = useRef(simSpeed);
+  const progressRef = useRef(progress);
   const mutedRef = useRef(muted);
   const followRef = useRef(true);
   const headingUpRef = useRef(false); // true when the map is a vector map that can rotate/tilt
-  const statusRef = useRef(status);
+  const statusRef = useRef<Status>('locating');
   const hintRef = useRef(0);
   const alongRef = useRef(0);
-  const posRef = useRef<LatLng>(route.geometry.coordinates.length ? { lat: route.geometry.coordinates[0][1], lng: route.geometry.coordinates[0][0] } : origin.coord);
+  const posRef = useRef<LatLng>(
+    route.geometry.coordinates.length ? { lat: route.geometry.coordinates[0][1], lng: route.geometry.coordinates[0][0] } : destination.coord,
+  );
   const headingRef = useRef(0);
+  const firstFixRef = useRef(true);
   const offCountRef = useRef(0);
   const lastRerouteRef = useRef(0);
   const reroutingRef = useRef(false);
+  const snoozeUntilRef = useRef(0);
   const announcedRef = useRef<Set<string>>(new Set());
   const startedRef = useRef(false);
-  const handlePosRef = useRef<(p: LatLng, o: { heading?: number | null; accuracy?: number; src: Source }) => void>(() => {});
+  const handlePosRef = useRef<(p: LatLng, o: { heading?: number | null; accuracy?: number; speed?: number | null }) => void>(() => {});
 
   modelRef.current = model;
-  sourceRef.current = source;
-  simSpeedRef.current = simSpeed;
+  progressRef.current = progress;
   mutedRef.current = muted;
-  statusRef.current = status;
+
+  const setStatusBoth = (s: Status) => {
+    statusRef.current = s;
+    setStatus(s);
+  };
 
   // ── map setup
   useEffect(() => {
@@ -150,13 +177,11 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
           followRef.current = false;
           setFollow(false);
         });
+        // Live traffic on every road, not only on the route.
         if (mode === 'driving') {
-          trafficRef.current = new g.maps.TrafficLayer();
-          trafficRef.current.setMap(map);
+          trafficLayerRef.current = new g.maps.TrafficLayer();
+          trafficLayerRef.current.setMap(map);
         }
-        const puck = createHtmlMarker(g, posRef.current, puckHtml(), undefined, 'center');
-        puck.setMap(map);
-        puckRef.current = puck;
         const pin = createHtmlMarker(g, destination.coord, pinHtml('#d93025', destination.label || 'الوجهة', 'B'));
         pin.setMap(map);
         destPinRef.current = pin;
@@ -166,8 +191,9 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
     return () => {
       cancelled = true;
       puckRef.current?.setMap(null);
+      puckRef.current = null;
       destPinRef.current?.setMap(null);
-      trafficRef.current?.setMap(null);
+      trafficLayerRef.current?.setMap(null);
       casingRef.current?.setMap(null);
       remainingRef.current?.setMap(null);
       passedRef.current?.setMap(null);
@@ -182,27 +208,149 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
     mapRef.current?.setOptions({ styles: theme === 'dark' ? DARK_STYLE : [] });
   }, [mapReady, theme, googleMapId]);
 
-  // ── (re)draw the route whenever the route model changes (start, or after a reroute)
+  // ── (re)draw the route whenever the route model changes (start, reroute, traffic refresh).
+  // Layers: blue road line, congestion colors over it (amber = slow, red = jam), and the part already
+  // driven in grey on top of both.
   useEffect(() => {
     const g = gRef.current;
     const map = mapRef.current;
     if (!mapReady || !g || !map) return;
     const path = model.pi.path;
-    casingRef.current?.setMap(null);
-    remainingRef.current?.setMap(null);
-    passedRef.current?.setMap(null);
+    const congestion = model.route.traffic.map(
+      (t) =>
+        new g.maps.Polyline({
+          path: path.slice(t.from, t.to + 1),
+          strokeColor: t.speed === 'TRAFFIC_JAM' ? '#d93025' : '#f9ab00',
+          strokeOpacity: 1,
+          strokeWeight: 7,
+          zIndex: 3,
+          map,
+        }),
+    );
     casingRef.current = new g.maps.Polyline({ path, strokeColor: '#0b4fb3', strokeOpacity: 0.95, strokeWeight: 11, zIndex: 1, map });
     remainingRef.current = new g.maps.Polyline({ path, strokeColor: '#1a73e8', strokeOpacity: 1, strokeWeight: 7, zIndex: 2, map });
-    passedRef.current = new g.maps.Polyline({ path: [], strokeColor: '#9aa0a6', strokeOpacity: 1, strokeWeight: 7, zIndex: 2, map });
+    passedRef.current = new g.maps.Polyline({ path: [], strokeColor: '#9aa0a6', strokeOpacity: 1, strokeWeight: 8, zIndex: 4, map });
+    return () => {
+      congestion.forEach((c: any) => c.setMap(null));
+      casingRef.current?.setMap(null);
+      remainingRef.current?.setMap(null);
+      passedRef.current?.setMap(null);
+    };
   }, [mapReady, model]);
 
-  // ── the heart of navigation: every position (GPS fix or simulated) goes through here
+  // Mark the announcements that are already behind us on a (new) route so they are not repeated.
+  const markAnnounced = (m: RouteModel, pr: Progress) => {
+    const phases = mode === 'walking' ? [100, 40] : [800, 250, 60];
+    const crossed = phases.filter((x) => pr.distToManeuver <= x);
+    const set = new Set<string>();
+    crossed.forEach((x) => set.add(`${pr.stepIndex}:${x}`));
+    announcedRef.current = set;
+    void m;
+  };
+
+  // Use a different route model from the current position onwards.
+  const swapModel = (next: RouteModel) => {
+    hintRef.current = 0;
+    alongRef.current = 0;
+    offCountRef.current = 0;
+    modelRef.current = next;
+    const pr = computeProgress(next, 0);
+    markAnnounced(next, pr);
+    progressRef.current = pr;
+    setModel(next);
+    setProgress(pr);
+  };
+
+  const routeOptions = () => ({
+    mode,
+    alternatives: false,
+    avoidTolls: avoid?.tolls,
+    avoidHighways: avoid?.highways,
+    avoidFerries: avoid?.ferries,
+  });
+
+  // ── recompute the route from the real position (left the route, or first fix far from the plan)
+  const reroute = async (from: LatLng) => {
+    if (reroutingRef.current) return;
+    reroutingRef.current = true;
+    lastRerouteRef.current = Date.now();
+    const wasLocating = statusRef.current === 'locating';
+    setStatusBoth('rerouting');
+    setRerouteErr(false);
+    setSuggest(null);
+    if (!wasLocating) speak('جارٍ إعادة حساب المسار', mutedRef.current);
+    try {
+      const res = await api.geo.route(from, destination.coord, routeOptions());
+      swapModel(buildRouteModel(res.routes?.[0] ?? res));
+      announcedRef.current = new Set();
+    } catch {
+      setRerouteErr(true);
+    } finally {
+      reroutingRef.current = false;
+      if (statusRef.current === 'rerouting') setStatusBoth('navigating');
+    }
+  };
+
+  // ── live traffic: every few minutes ask for the current conditions. The same road just gets its
+  // ETA and congestion colors refreshed; a different, clearly faster route is offered to the driver.
+  const refreshTraffic = async () => {
+    if (mode !== 'driving' || reroutingRef.current || statusRef.current !== 'navigating') return;
+    try {
+      const res = await api.geo.route(posRef.current, destination.coord, routeOptions());
+      if (statusRef.current !== 'navigating') return;
+      const fresh = buildRouteModel(res.routes?.[0] ?? res);
+      if (isSameRoute(modelRef.current.pi, fresh.pi)) {
+        swapModel(fresh);
+        return;
+      }
+      const cur = progressRef.current;
+      const saved = cur.remainingDur - fresh.route.duration;
+      if (saved >= Math.max(120, cur.remainingDur * 0.1) && Date.now() > snoozeUntilRef.current) setSuggest({ model: fresh, savedSec: saved });
+    } catch {
+      /* the next refresh will try again */
+    }
+  };
+
+  useEffect(() => {
+    if (!mapReady || status === 'arrived' || status === 'locating') return;
+    const id = window.setInterval(() => void refreshTraffic(), TRAFFIC_REFRESH_MS);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapReady, status]);
+
+  // The offer to switch routes disappears by itself if the driver ignores it.
+  useEffect(() => {
+    if (!suggest) return;
+    const id = window.setTimeout(() => {
+      snoozeUntilRef.current = Date.now() + SUGGESTION_SNOOZE_MS;
+      setSuggest(null);
+    }, 25_000);
+    return () => clearTimeout(id);
+  }, [suggest]);
+
+  // ── the heart of navigation: every real GPS fix goes through here
   const handlePosition = useCallback(
-    (raw: LatLng, o: { heading?: number | null; accuracy?: number; src: Source }) => {
+    (raw: LatLng, o: { heading?: number | null; accuracy?: number; speed?: number | null }) => {
       if (statusRef.current === 'arrived') return;
       const m = modelRef.current;
       const snap = snapToPath(m.pi, raw, hintRef.current);
       hintRef.current = snap.index;
+      const limit = Math.max(50, (o.accuracy ?? 0) * 2);
+
+      // The very first fix: if the vehicle is not on the planned route (e.g. the plan started elsewhere),
+      // plan again from where it really is before showing anything.
+      if (firstFixRef.current) {
+        firstFixRef.current = false;
+        setGpsNote('');
+        posRef.current = raw;
+        if (snap.dist > limit) {
+          void reroute(raw);
+          return;
+        }
+        setStatusBoth('navigating');
+      }
+
+      setSpeedKmh(o.speed != null && o.speed >= 0 ? Math.round(o.speed * 3.6) : null);
 
       // Show the vehicle on the road when it's on the route; show the raw fix when it has left it.
       const onRoute = snap.dist < 35;
@@ -213,19 +361,24 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
       let heading = headingRef.current;
       if (o.heading != null && Number.isFinite(o.heading)) heading = o.heading;
       else if (haversine(posRef.current, shown) > 3) heading = bearing(posRef.current, shown);
-      else if (o.src === 'sim' || onRoute) heading = pointAt(m.pi, snap.along).heading;
+      else if (onRoute) heading = pointAt(m.pi, snap.along).heading;
       headingRef.current = heading;
       posRef.current = shown;
 
       const pr = computeProgress(m, snap.along);
+      progressRef.current = pr;
       setProgress(pr);
 
       // ── map
       const g = gRef.current;
       const map = mapRef.current;
       if (g && map) {
-        puckRef.current?.setPosition(shown);
-        const svg = puckRef.current?.element()?.querySelector('svg') as SVGElement | null;
+        if (!puckRef.current) {
+          puckRef.current = createHtmlMarker(g, shown, puckHtml(), undefined, 'center');
+          puckRef.current.setMap(map);
+        }
+        puckRef.current.setPosition(shown);
+        const svg = puckRef.current.element()?.querySelector('svg') as SVGElement | null;
         // The arrow is relative to the screen: when the map itself rotates (heading-up) it points up.
         if (svg) svg.style.transform = `rotate(${heading - (map.getHeading?.() ?? 0)}deg)`;
         const path = m.pi.path;
@@ -241,20 +394,16 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
 
       // ── arrival
       if (pr.arrived) {
-        statusRef.current = 'arrived';
-        setStatus('arrived');
+        setStatusBoth('arrived');
         speak('لقد وصلت إلى وجهتك', mutedRef.current);
         return;
       }
 
-      // ── off-route (GPS only: a simulated vehicle is always on the route)
-      if (o.src === 'gps') {
-        const limit = Math.max(50, (o.accuracy ?? 0) * 2);
-        offCountRef.current = snap.dist > limit ? offCountRef.current + 1 : 0;
-        if (offCountRef.current >= 3 && Date.now() - lastRerouteRef.current > 8000) {
-          void reroute(raw);
-          return;
-        }
+      // ── off-route: three fixes in a row away from the road => plan again from here
+      offCountRef.current = snap.dist > limit ? offCountRef.current + 1 : 0;
+      if (offCountRef.current >= 3 && Date.now() - lastRerouteRef.current > 8000) {
+        void reroute(raw);
+        return;
       }
 
       // ── voice guidance
@@ -278,88 +427,50 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
           : last ? up.instruction : `بعد ${speakDistance(pr.distToManeuver)}، ${up.instruction}`;
         if (!quiet) speak(text, mutedRef.current);
       }
+
+      // ── warn once about congestion ahead
+      if (mode === 'driving') {
+        const ta = trafficAhead(m, snap.along, 1500);
+        if (ta && !ta.inside) {
+          const key = `t:${Math.round(ta.start / 50)}`;
+          if (!ann.has(key)) {
+            ann.add(key);
+            speak(`ازدحام مروري ${ta.speed === 'TRAFFIC_JAM' ? 'شديد ' : ''}أمامك بعد ${speakDistance(ta.startsIn)}`, mutedRef.current);
+          }
+        }
+      }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [mode, destination.label],
   );
   handlePosRef.current = handlePosition;
 
-  // ── recompute the route from the current position
-  const reroute = async (from: LatLng) => {
-    if (reroutingRef.current) return;
-    reroutingRef.current = true;
-    lastRerouteRef.current = Date.now();
-    setStatus('rerouting');
-    statusRef.current = 'rerouting';
-    setRerouteErr(false);
-    speak('جارٍ إعادة حساب المسار', mutedRef.current);
-    try {
-      const res = await api.geo.route(from, destination.coord, {
-        mode,
-        alternatives: false,
-        avoidTolls: avoid?.tolls,
-        avoidHighways: avoid?.highways,
-        avoidFerries: avoid?.ferries,
-      });
-      const next = buildRouteModel(res.routes?.[0] ?? res);
-      hintRef.current = 0;
-      alongRef.current = 0;
-      offCountRef.current = 0;
-      announcedRef.current = new Set();
-      modelRef.current = next;
-      setModel(next);
-      setProgress(computeProgress(next, 0));
-    } catch {
-      setRerouteErr(true);
-    } finally {
-      reroutingRef.current = false;
-      if (statusRef.current === 'rerouting') {
-        statusRef.current = 'navigating';
-        setStatus('navigating');
-      }
-    }
-  };
-
-  // ── position source: real GPS or a simulated drive along the route
+  // ── the position source: the device's GPS, nothing else
   useEffect(() => {
     if (!mapReady || status === 'arrived') return;
-    if (source === 'gps') {
-      if (!('geolocation' in navigator)) {
-        setGpsMsg('المتصفح لا يدعم تحديد الموقع. استخدم المعاينة.');
-        return;
-      }
-      setGpsMsg('بانتظار إشارة GPS…');
-      const id = navigator.geolocation.watchPosition(
-        (pos) => {
-          setGpsMsg('');
-          const { latitude, longitude, heading, speed, accuracy } = pos.coords;
-          handlePosRef.current(
-            { lat: latitude, lng: longitude },
-            { heading: speed != null && speed > 1 && heading != null ? heading : null, accuracy, src: 'gps' },
-          );
-        },
-        (err) => {
-          if (err.code === err.PERMISSION_DENIED) setGpsMsg('تم رفض إذن الموقع. فعّله من إعدادات المتصفح أو استخدم المعاينة.');
-          else if (err.code === err.POSITION_UNAVAILABLE) setGpsMsg('تعذّر تحديد موقعك. تأكد من تفعيل GPS.');
-          else setGpsMsg('إشارة GPS ضعيفة… ما زلنا نحاول.');
-        },
-        { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 },
-      );
-      return () => navigator.geolocation.clearWatch(id);
+    if (!window.isSecureContext || !('geolocation' in navigator)) {
+      setGpsError('الملاحة تحتاج اتصالاً آمناً (HTTPS) ودعم تحديد الموقع في المتصفح.');
+      return;
     }
-
-    // Simulation: start from where we are on the route.
-    setGpsMsg('');
-    let along = alongRef.current;
-    const base = mode === 'walking' ? 1.4 : 13.9; // m/s (5 km/h walking, 50 km/h driving)
-    const tick = window.setInterval(() => {
-      const m = modelRef.current;
-      along = Math.min(m.pi.total, along + base * simSpeedRef.current * 0.5);
-      const p = pointAt(m.pi, along);
-      handlePosRef.current(p.point, { heading: p.heading, src: 'sim' });
-    }, 500);
-    return () => clearInterval(tick);
-  }, [mapReady, source, status, mode, model]);
+    setGpsError('');
+    const id = navigator.geolocation.watchPosition(
+      (pos) => {
+        setGpsNote('');
+        const { latitude, longitude, heading, speed, accuracy } = pos.coords;
+        handlePosRef.current(
+          { lat: latitude, lng: longitude },
+          { heading: speed != null && speed > 1 && heading != null ? heading : null, accuracy, speed },
+        );
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) setGpsError('تم رفض إذن الموقع. فعّله لهذا الموقع من إعدادات المتصفح ثم أعد المحاولة.');
+        else if (err.code === err.POSITION_UNAVAILABLE) setGpsError('تعذّر تحديد موقعك. تأكد من تفعيل GPS ثم أعد المحاولة.');
+        else setGpsNote('إشارة GPS ضعيفة… ما زلنا نحاول.');
+      },
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 },
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, [mapReady, status === 'arrived', gpsTry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── keep the screen awake while navigating
   useEffect(() => {
@@ -405,14 +516,35 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
     followRef.current = false;
     setFollow(false);
     const bounds = new g.maps.LatLngBounds();
-    const m = modelRef.current;
     bounds.extend(posRef.current);
-    m.pi.path.slice(Math.max(0, hintRef.current)).forEach((p) => bounds.extend(p));
+    modelRef.current.pi.path.slice(Math.max(0, hintRef.current)).forEach((p) => bounds.extend(p));
     if (headingUpRef.current) {
       map.setHeading(0);
       map.setTilt(0);
     }
-    map.fitBounds(bounds, { top: 190, right: 40, bottom: 120, left: 40 });
+    map.fitBounds(bounds, { top: 230, right: 40, bottom: 120, left: 40 });
+  };
+
+  const acceptSuggestion = () => {
+    if (!suggest) return;
+    swapModel(suggest.model);
+    setSuggest(null);
+    speak('تم التحويل إلى مسار أسرع', mutedRef.current);
+  };
+  const dismissSuggestion = () => {
+    snoozeUntilRef.current = Date.now() + SUGGESTION_SNOOZE_MS;
+    setSuggest(null);
+  };
+
+  const runArrivalAction = async () => {
+    if (!arrivalAction) return;
+    setActionState('busy');
+    try {
+      await arrivalAction.run();
+      setActionState('done');
+    } catch {
+      setActionState('error');
+    }
   };
 
   // ── derived UI values
@@ -421,16 +553,44 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
   const afterNext = model.route.steps[progress.stepIndex + 2];
   const bannerManeuver = atStart ? model.route.steps[0]?.maneuver ?? 'DEPART' : up.maneuver;
   const bannerText = atStart ? model.route.steps[0]?.instruction || up.instruction : up.instruction;
-  const bannerDist = atStart ? progress.distToManeuver : progress.distToManeuver;
+  const currentRoad = !atStart && progress.stepIndex > 0 ? model.route.steps[progress.stepIndex]?.instruction : '';
+  const ta = mode === 'driving' && status === 'navigating' ? trafficAhead(model, alongRef.current, 20000) : null;
+  const locating = status === 'locating';
 
   return (
     <div className="fixed inset-0 z-[60] bg-slate-900 text-white" dir="rtl">
       <div ref={mapDiv} className="absolute inset-0" />
 
       {mapError && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-slate-900 p-6 text-center">
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-slate-900 p-6 text-center">
           <p className="font-semibold">تعذّر تحميل الخريطة: {mapError}</p>
           <button onClick={onExit} className="rounded-xl bg-white/10 px-4 py-2 text-sm font-bold">رجوع</button>
+        </div>
+      )}
+
+      {/* ───── Waiting for the real position ───── */}
+      {locating && !mapError && (
+        <div className="absolute inset-x-0 top-1/3 z-20 mx-auto w-[min(92%,24rem)] rounded-3xl bg-white p-5 text-center text-slate-900 shadow-2xl" data-testid="nav-locating">
+          {gpsError ? (
+            <>
+              <div className="text-4xl">📍</div>
+              <p className="mt-2 text-sm font-semibold leading-relaxed">{gpsError}</p>
+              <div className="mt-4 flex gap-2">
+                <button onClick={() => setGpsTry((n) => n + 1)} className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-bold text-white" data-testid="nav-gps-retry">
+                  إعادة المحاولة
+                </button>
+                <button onClick={onExit} className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-bold">
+                  رجوع
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+              <p className="mt-3 text-sm font-bold">جارٍ تحديد موقعك…</p>
+              <p className="mt-1 text-xs text-slate-500">{gpsNote || 'ستبدأ الملاحة من موقعك الفعلي عند التقاط الإشارة.'}</p>
+            </>
+          )}
         </div>
       )}
 
@@ -443,7 +603,7 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-2xl font-black leading-tight" dir="rtl" data-testid="nav-distance">
-                {atStart ? 'انطلق' : formatDistance(bannerDist)}
+                {atStart ? 'انطلق' : formatDistance(progress.distToManeuver)}
               </div>
               <div className="line-clamp-2 text-sm font-semibold leading-snug text-white/95" data-testid="nav-instruction">
                 {bannerText}
@@ -459,56 +619,72 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
           )}
         </div>
 
+        {/* Where I am and what is ahead */}
+        {currentRoad && (
+          <div className="truncate rounded-xl bg-slate-800/90 px-3 py-1.5 text-xs shadow-lg" data-testid="nav-road">
+            <span className="text-white/60">الآن: </span>
+            {currentRoad}
+          </div>
+        )}
+        {mode === 'driving' && status === 'navigating' && (
+          <div
+            className={`rounded-xl px-3 py-2 text-xs font-bold shadow-lg ${
+              ta ? (ta.speed === 'TRAFFIC_JAM' ? 'bg-red-600' : 'bg-amber-500') : 'bg-emerald-700/95'
+            }`}
+            data-testid="nav-traffic"
+          >
+            {ta
+              ? ta.inside
+                ? `🚦 أنت داخل ازدحام ${ta.speed === 'TRAFFIC_JAM' ? 'شديد' : 'متوسط'} — يمتد ${formatDistance(ta.length)} أمامك`
+                : `🚦 ازدحام ${ta.speed === 'TRAFFIC_JAM' ? 'شديد' : 'متوسط'} بعد ${formatDistance(ta.startsIn)} — يمتد ${formatDistance(ta.length)}`
+              : '✅ لا ازدحام على المسار القريب'}
+          </div>
+        )}
+
+        {suggest && (
+          <div className="rounded-xl bg-white p-3 text-slate-900 shadow-2xl" data-testid="nav-suggest">
+            <p className="text-sm font-black">⚡ مسار أسرع متاح</p>
+            <p className="mt-0.5 text-xs text-slate-600">يوفّر نحو {formatDuration(suggest.savedSec)} حسب حركة المرور الآن.</p>
+            <div className="mt-2 flex gap-2">
+              <button onClick={acceptSuggestion} className="flex-1 rounded-lg bg-blue-600 py-2 text-xs font-bold text-white" data-testid="nav-suggest-accept">
+                تحويل
+              </button>
+              <button onClick={dismissSuggestion} className="flex-1 rounded-lg bg-slate-100 py-2 text-xs font-bold">
+                تجاهل
+              </button>
+            </div>
+          </div>
+        )}
         {status === 'rerouting' && (
-          <div className="flex items-center gap-2 rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold text-white shadow-lg">
+          <div className="flex items-center gap-2 rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold text-white shadow-lg" data-testid="nav-rerouting">
             <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            جارٍ إعادة حساب المسار…
+            {locating ? 'جارٍ حساب المسار من موقعك…' : 'جارٍ إعادة حساب المسار…'}
           </div>
         )}
         {rerouteErr && status !== 'rerouting' && (
           <div className="rounded-xl bg-red-600 px-3 py-2 text-xs font-bold shadow-lg">تعذّر إعادة حساب المسار، سنحاول مجدداً عند الحاجة.</div>
         )}
-        {source === 'gps' && gpsMsg && (
-          <div className="rounded-xl bg-slate-800/95 px-3 py-2 text-xs shadow-lg">
-            {gpsMsg}
-            {gpsMsg.startsWith('تم رفض') && (
-              <button onClick={() => setSource('sim')} className="ms-2 rounded-lg bg-white/15 px-2 py-0.5 font-bold">معاينة الرحلة</button>
-            )}
-          </div>
-        )}
-        {source === 'sim' && (
-          <div className="flex items-center gap-2 rounded-xl bg-indigo-600/95 px-3 py-2 text-xs font-bold shadow-lg">
-            <span>🎬 معاينة الرحلة (محاكاة)</span>
-            <button
-              onClick={() => setSimSpeed((s) => SIM_SPEEDS[(SIM_SPEEDS.indexOf(s) + 1) % SIM_SPEEDS.length])}
-              className="ms-auto rounded-lg bg-white/20 px-2 py-0.5"
-              data-testid="nav-speed"
-            >
-              ×{simSpeed}
-            </button>
-            <button onClick={() => setSource('gps')} className="rounded-lg bg-white/20 px-2 py-0.5" data-testid="nav-use-gps">
-              استخدم موقعي الفعلي
-            </button>
-          </div>
-        )}
+        {gpsNote && !locating && <div className="rounded-xl bg-slate-800/95 px-3 py-2 text-xs shadow-lg">{gpsNote}</div>}
       </div>
+
+      {/* ───── Speed ───── */}
+      {speedKmh != null && status !== 'arrived' && (
+        <div className="absolute bottom-28 start-3 z-10 grid h-16 w-16 place-items-center rounded-full border-4 border-white bg-slate-900/90 text-center shadow-2xl" data-testid="nav-speed">
+          <div>
+            <div className="text-xl font-black leading-none">{speedKmh}</div>
+            <div className="mt-0.5 text-[9px] text-white/70">كم/س</div>
+          </div>
+        </div>
+      )}
 
       {/* ───── Re-center / overview ───── */}
       {status !== 'arrived' && (
         <div className="absolute bottom-28 end-3 z-10 flex flex-col items-end gap-2">
-          <button
-            onClick={overview}
-            className="rounded-full bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-2xl active:scale-95"
-            data-testid="nav-overview"
-          >
+          <button onClick={overview} className="rounded-full bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-2xl active:scale-95" data-testid="nav-overview">
             🗺️ نظرة عامة
           </button>
           {!follow && (
-            <button
-              onClick={recenter}
-              className="flex items-center gap-1.5 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-blue-600 shadow-2xl active:scale-95"
-              data-testid="nav-recenter"
-            >
+            <button onClick={recenter} className="flex items-center gap-1.5 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-blue-600 shadow-2xl active:scale-95" data-testid="nav-recenter">
               🎯 إعادة التركيز
             </button>
           )}
@@ -518,11 +694,7 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
       {/* ───── Bottom bar ───── */}
       <div className="absolute inset-x-0 bottom-0 z-10 bg-white text-slate-900 shadow-[0_-6px_24px_rgba(0,0,0,.25)]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <button
-            onClick={onExit}
-            className="shrink-0 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-black text-white shadow active:scale-95"
-            data-testid="nav-exit"
-          >
+          <button onClick={onExit} className="shrink-0 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-black text-white shadow active:scale-95" data-testid="nav-exit">
             إنهاء
           </button>
           <div className="min-w-0 flex-1 text-center">
@@ -533,11 +705,7 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
               {formatDuration(progress.remainingDur)} • {formatDistance(progress.remainingDist)}
             </div>
           </div>
-          <button
-            onClick={toggleMute}
-            title={muted ? 'تشغيل الصوت' : 'كتم الصوت'}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-slate-100 text-lg active:scale-95"
-          >
+          <button onClick={toggleMute} title={muted ? 'تشغيل الصوت' : 'كتم الصوت'} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-slate-100 text-lg active:scale-95">
             {muted ? '🔇' : '🔊'}
           </button>
         </div>
@@ -545,16 +713,29 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
 
       {/* ───── Arrived ───── */}
       {status === 'arrived' && (
-        <div className="absolute inset-0 z-20 grid place-items-center bg-black/50 p-6">
+        <div className="absolute inset-0 z-30 grid place-items-center bg-black/50 p-6">
           <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center text-slate-900 shadow-2xl" data-testid="nav-arrived">
             <div className="text-5xl">🏁</div>
             <h2 className="mt-2 text-xl font-black">وصلت إلى وجهتك</h2>
             <p className="mt-1 text-sm text-slate-600">{destination.label}</p>
-            <button onClick={onExit} className="mt-5 w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white">تم</button>
+            {arrivalAction && actionState !== 'done' && (
+              <button
+                onClick={runArrivalAction}
+                disabled={actionState === 'busy'}
+                className="mt-5 w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white disabled:opacity-60"
+                data-testid="nav-arrival-action"
+              >
+                {actionState === 'busy' ? 'جارٍ التحديث…' : arrivalAction.label}
+              </button>
+            )}
+            {actionState === 'done' && <p className="mt-4 text-sm font-bold text-emerald-700" data-testid="nav-action-done">✓ تم تحديث حالة الرحلة</p>}
+            {actionState === 'error' && <p className="mt-3 text-xs font-bold text-red-600">تعذّر تحديث الحالة، حاول مرة أخرى.</p>}
+            <button onClick={onExit} className="mt-3 w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white" data-testid="nav-arrived-close">
+              {actionState === 'done' || !arrivalAction ? 'تم' : 'إغلاق'}
+            </button>
           </div>
         </div>
       )}
     </div>
   );
 }
-

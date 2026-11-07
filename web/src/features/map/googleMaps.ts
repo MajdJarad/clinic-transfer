@@ -10,10 +10,8 @@ declare global {
 
 export type LatLng = { lat: number; lng: number };
 
-// Istanbul: default map center and default demo waypoints.
+// Istanbul: used only until the server's configured map center is known.
 export const ISTANBUL_CENTER: LatLng = { lat: 41.0082, lng: 28.9784 };
-export const DEFAULT_ORIGIN = { label: 'مطار إسطنبول', coord: { lat: 41.2753, lng: 28.7519 } };
-export const DEFAULT_DESTINATION = { label: 'ميدان تقسيم، إسطنبول', coord: { lat: 41.037, lng: 28.9851 } };
 
 let scriptPromise: Promise<any> | null = null;
 let loadedKey = '';
