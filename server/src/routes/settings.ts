@@ -4,6 +4,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { env, googleMapsEnabled, traccarEnabled } from '../env';
 import { asyncHandler } from '../lib/http';
+import { databaseIsPersistent } from '../lib/persistence';
 import {
   defaultSettings,
   getSettings,
@@ -31,7 +32,6 @@ function appVersion(): string {
 function systemInfo() {
   const url = process.env.DATABASE_URL ?? '';
   const file = url.startsWith('file:') ? url.slice(5) : '';
-  const absolute = file !== '' && path.isAbsolute(file);
   return {
     version: appVersion(),
     environment: env.nodeEnv,
@@ -42,7 +42,7 @@ function systemInfo() {
       file: file ? path.basename(file) : 'unknown',
       // A relative SQLite file lives inside the app image/container: on most hosts it is lost on every
       // deploy or restart unless the path points at a persistent disk (an absolute path, e.g. /data/..).
-      mayBeEphemeral: env.nodeEnv === 'production' && !absolute,
+      mayBeEphemeral: env.nodeEnv === 'production' && !databaseIsPersistent(url, process.env.DATA_PERSISTENT),
     },
     google: { mapsConfigured: googleMapsEnabled, mapIdConfigured: Boolean(env.googleMapId) },
     traccarEnabled,

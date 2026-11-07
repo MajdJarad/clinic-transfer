@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { ensureDriverProfile } from '../lib/driverProfile';
 import { z } from 'zod';
 import { roleSchema } from '../constants';
 import { prisma } from '../db';
@@ -89,6 +90,8 @@ usersRouter.patch(
       },
       select: { id: true, name: true, email: true, role: true, active: true },
     });
+    // An account turned into a driver needs its Driver row, or it logs in and shows nothing.
+    if (updated.role === 'DRIVER') await ensureDriverProfile(updated.id);
     res.json(updated);
   }),
 );

@@ -48,6 +48,7 @@ export function DriverApp() {
   // Driver & Trips State
   const [driver, setDriver] = useState<Driver | null>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
+  const [loadError, setLoadError] = useState(false); // the trips could not be fetched from the server
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const selectedRef = useRef<Trip | null>(null);
   selectedRef.current = selectedTrip;
@@ -92,6 +93,7 @@ export function DriverApp() {
     if (!driverId) return;
     api.drivers.me(driverId).then(setDriver).catch(() => {});
     api.trips.mine().then((data) => {
+      setLoadError(false);
       setTrips(data);
       // Keep the trip the driver is working on (refreshed with its new status); only pick one
       // automatically the first time. (This callback is memoized, so it must read the current
@@ -104,7 +106,7 @@ export function DriverApp() {
         const current = data.find((tr) => ACTIVE_STATUSES.includes(tr.status)) ?? data[0];
         setSelectedTrip(current);
       }
-    }).catch(() => {});
+    }).catch(() => setLoadError(true));
   }, [driverId]);
 
   // The phone shares its position with the clinic by itself while this app is open: always on, no switch.
@@ -252,7 +254,13 @@ export function DriverApp() {
               <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" title="موقعك يصل للمنسق مباشرة" data-testid="share-dot" />
             ) : (
               <span className="rounded-lg border border-amber-500/40 bg-amber-500/20 px-2 py-1 text-[11px] font-bold text-amber-200" data-testid="share-problem">
-                {share.state === 'denied' ? '⚠️ فعّل إذن الموقع' : share.state === 'unavailable' ? '⚠️ الموقع غير متاح' : '📡 …'}
+                {share.state === 'denied'
+                  ? '⚠️ فعّل إذن الموقع'
+                  : share.state === 'unavailable'
+                    ? '⚠️ الموقع غير متاح'
+                    : share.state === 'error'
+                      ? '⚠️ موقعك لا يصل للمنسق'
+                      : '📡 …'}
               </span>
             )}
             <DriverAlertButton />
@@ -309,6 +317,24 @@ export function DriverApp() {
           ))}
         </div>
       </header>
+
+      {/* The account must be linked to a driver in the database, and its trips/position must reach the server:
+          say plainly when it is not, instead of showing an empty, silent app. */}
+      {!driverId && (
+        <div className="m-3 rounded-xl border border-red-400/50 bg-red-500/10 p-3 text-xs font-bold text-red-700 dark:text-red-300" data-testid="driver-unlinked">
+          ⚠️ هذا الحساب غير مرتبط بملف سائق في قاعدة البيانات، فلن تصلك رحلات ولن يظهر موقعك. اطلب من المسؤول ربطه بسائق، أو سجّل الدخول بحساب سائق آخر.
+        </div>
+      )}
+      {driverId && (loadError || share.state === 'error') && (
+        <div className="m-3 flex items-center justify-between gap-3 rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-xs font-bold text-amber-800 dark:text-amber-200" data-testid="driver-sync-error">
+          <span>
+            ⚠️ {loadError ? 'تعذّر تحميل رحلاتك من الخادم' : 'تعذّر إرسال موقعك للمنسق'}. تأكد من الاتصال بالإنترنت؛ وإن استمر ذلك سجّل الخروج ثم الدخول من جديد.
+          </span>
+          <button type="button" onClick={loadDriver} className="shrink-0 rounded-lg bg-amber-600 px-3 py-1 text-white" data-testid="driver-sync-retry">
+            إعادة المحاولة
+          </button>
+        </div>
+      )}
 
       {/* ─── Main Views ─── */}
       <main className={activeTab === 'navigation' ? 'p-0' : 'p-3 md:p-4 max-w-6xl mx-auto'}>

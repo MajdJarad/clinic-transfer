@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { Role } from '../constants';
 import { prisma } from '../db';
 import { signToken, verifyPassword } from '../lib/auth';
+import { ensureDriverProfile } from '../lib/driverProfile';
 import { asyncHandler, HttpError } from '../lib/http';
 import { authenticate } from '../middleware/auth';
 
@@ -25,10 +26,11 @@ authRouter.post(
     const ok = await verifyPassword(password, user.passwordHash);
     if (!ok) throw new HttpError(401, 'Invalid credentials');
 
+    const driverId = user.driver?.id ?? (user.role === 'DRIVER' ? await ensureDriverProfile(user.id) : null);
     const token = signToken({
       sub: user.id,
       role: user.role as Role,
-      driverId: user.driver?.id ?? null,
+      driverId,
     });
 
     res.json({
@@ -38,7 +40,7 @@ authRouter.post(
         name: user.name,
         email: user.email,
         role: user.role,
-        driverId: user.driver?.id ?? null,
+        driverId,
       },
     });
   }),
@@ -58,7 +60,7 @@ authRouter.get(
       name: user.name,
       email: user.email,
       role: user.role,
-      driverId: user.driver?.id ?? null,
+      driverId: user.driver?.id ?? (user.role === 'DRIVER' ? await ensureDriverProfile(user.id) : null),
     });
   }),
 );

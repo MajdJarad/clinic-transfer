@@ -17,6 +17,7 @@ import { geoRouter } from './routes/geo';
 import { settingsRouter } from './routes/settings';
 import { alertsRouter } from './routes/alerts';
 import { getSettings } from './lib/settings';
+import { databaseIsPersistent } from './lib/persistence';
 
 const app = express();
 
@@ -34,7 +35,18 @@ function webBuildId(): string | null {
   }
 }
 
-app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'transfer-server', webBuild: webBuildId() }));
+const startedAt = new Date().toISOString();
+app.get('/api/health', (_req, res) =>
+  res.json({
+    ok: true,
+    service: 'transfer-server',
+    webBuild: webBuildId(),
+    startedAt,
+    uptimeSeconds: Math.round(process.uptime()),
+    // false: the database is inside the container and goes back to the demo data on every deploy/restart
+    databasePersistent: databaseIsPersistent(process.env.DATABASE_URL, process.env.DATA_PERSISTENT),
+  }),
+);
 
 // Public runtime config for the web client.
 // Maps, routing and place search all use Google Maps (GOOGLE_MAPS_API_KEY).

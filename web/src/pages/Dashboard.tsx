@@ -5,7 +5,6 @@ import { useMapConfig } from '../config';
 import { MapView, type MapPoint } from '../features/map/MapView';
 import { Button, Card, EmptyState, PageHeader, SectionTitle, StatusPill } from '../components/ui';
 import { tripStatusKeys, tripTypeKeys } from '../labels';
-import { isCurrent } from '../features/tracking/freshness';
 import type { DashboardSummary, TrackingDriver, Trip } from '../types';
 import { WhatsAppModal } from '../components/WhatsAppModal';
 
@@ -43,7 +42,7 @@ export function Dashboard() {
   const points = useMemo<MapPoint[]>(
     () =>
       drivers
-        .filter(isCurrent)
+        .filter((d) => d.lat != null && d.lng != null)
         .map((d) => ({
           id: d.id,
           lat: d.lat as number,
