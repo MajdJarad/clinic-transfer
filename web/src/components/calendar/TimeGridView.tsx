@@ -83,6 +83,8 @@ export function TimeGridView({
   const { t, intl } = useI18n();
   const bodyHeight = HOURS * hourHeight;
   const colsRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrolled = useRef<{ key: string; hadEvents: boolean } | null>(null);
   const [now, setNow] = useState(new Date());
   const [drag, setDrag] = useState<{
     trip: Trip;
@@ -132,6 +134,25 @@ export function TimeGridView({
       window.removeEventListener('pointerup', up);
     };
   }, [drag, hourHeight, days.length, onEventMove, onEventClick]);
+
+  // The grid starts at 00:00, but trips are in the daytime: open it one hour before the first trip of the
+  // visible days (or around the current time, or 07:00), so trips are never hidden below the fold.
+  // It happens once per set of days (again if the trips only arrive afterwards), never on every refresh.
+  const dayKey = days.map((d) => d.toDateString()).join('|');
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const starts = events
+      .filter((e) => days.some((d) => isSameDay(new Date(e.scheduledAt), d)))
+      .map((e) => minutesSinceMidnight(new Date(e.scheduledAt)));
+    const has = starts.length > 0;
+    const done = scrolled.current;
+    if (done && done.key === dayKey && (done.hadEvents || !has)) return;
+    const now = new Date();
+    const minutes = has ? Math.min(...starts) - 60 : days.some((d) => isSameDay(d, now)) ? now.getHours() * 60 - 60 : 7 * 60;
+    el.scrollTop = Math.max(0, (minutes / 60) * hourHeight);
+    scrolled.current = { key: dayKey, hadEvents: has };
+  }, [dayKey, events, days, hourHeight]);
 
   const eventsByDay = days.map((day) =>
     events
@@ -188,7 +209,7 @@ export function TimeGridView({
         })}
       </div>
 
-      <div className="relative flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="relative flex-1 overflow-y-auto">
         <div className="flex" style={{ height: bodyHeight }}>
           <div className="relative w-14 shrink-0">
             {Array.from({ length: HOURS }, (_, h) => (

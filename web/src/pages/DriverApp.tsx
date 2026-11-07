@@ -26,6 +26,7 @@ import {
   addMonths,
   formatMonthYear,
   formatRangeLabel,
+  isSameDay,
   startOfDay,
   startOfWeek,
 } from '../lib/date';
@@ -172,6 +173,18 @@ export function DriverApp() {
       );
     });
   }, [trips, calQuery]);
+
+  // The trips of the day on screen, as a strip above the grid, so they are seen at once (the grid is 24 h tall).
+  const dayTrips = useMemo(
+    () => visibleCalTrips.filter((tr) => isSameDay(new Date(tr.scheduledAt), calAnchor)).sort((a, b) => +new Date(a.scheduledAt) - +new Date(b.scheduledAt)),
+    [visibleCalTrips, calAnchor],
+  );
+  // No trip on this day: point to the nearest one that is still ahead (or the latest one).
+  const nearestTrip = useMemo(() => {
+    const from = startOfDay(calAnchor).getTime();
+    const sorted = [...visibleCalTrips].sort((a, b) => +new Date(a.scheduledAt) - +new Date(b.scheduledAt));
+    return sorted.find((tr) => +new Date(tr.scheduledAt) >= from) ?? sorted[sorted.length - 1] ?? null;
+  }, [visibleCalTrips, calAnchor]);
 
   // The map screen follows the selected trip by itself (start = my real position, target = patient, then
   // destination); opening a trip from the calendar just selects it and shows the map.
@@ -358,6 +371,37 @@ export function DriverApp() {
                 </div>
               </div>
             </Card>
+
+            {calView === 'day' && dayTrips.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-1" data-testid="driver-day-trips">
+                {dayTrips.map((tr) => (
+                  <button
+                    key={tr.id}
+                    type="button"
+                    onClick={() => setCalDetailTrip(tr)}
+                    className="shrink-0 rounded-xl border border-border bg-surface px-3 py-2 text-start shadow-card transition hover:border-blue-400"
+                    data-testid={`day-trip-${tr.id}`}
+                  >
+                    <span className="block text-xs font-black text-fg">
+                      🕓 {new Date(tr.scheduledAt).toLocaleTimeString(intl, { hour: '2-digit', minute: '2-digit' })} • {tr.patientName}
+                    </span>
+                    <span className="block max-w-[15rem] truncate text-[11px] text-muted">
+                      {tr.origin} ← {tr.destination}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {calView === 'day' && dayTrips.length === 0 && nearestTrip && (
+              <button
+                type="button"
+                onClick={() => setCalAnchor(new Date(nearestTrip.scheduledAt))}
+                className="w-full rounded-xl border border-dashed border-border bg-surface px-3 py-2 text-start text-xs font-semibold text-muted transition hover:border-blue-400"
+                data-testid="driver-nearest-trip"
+              >
+                لا توجد رحلات في هذا اليوم — اضغط للانتقال إلى أقرب رحلة ({new Date(nearestTrip.scheduledAt).toLocaleDateString(intl, { day: 'numeric', month: 'long' })}، {new Date(nearestTrip.scheduledAt).toLocaleTimeString(intl, { hour: '2-digit', minute: '2-digit' })})
+              </button>
+            )}
 
             {/* Calendar Main Grid Container */}
             <div className="h-[calc(100vh-14rem)] min-h-[500px] rounded-2xl border border-border bg-surface overflow-hidden shadow-card">
