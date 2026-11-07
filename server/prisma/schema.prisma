@@ -116,3 +116,11 @@ model Maintenance {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
+
+// Admin-editable application settings (key -> JSON value). Anything not stored here
+// falls back to the defaults in src/lib/settings.ts.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

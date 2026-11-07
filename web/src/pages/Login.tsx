@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { useClinicName } from '../config';
 import { useI18n } from '../i18n';
 import { LanguageSelect, ThemeToggle } from '../components/Controls';
 import { Button, ErrorText, Field, Input } from '../components/ui';
@@ -8,6 +9,7 @@ import { Button, ErrorText, Field, Input } from '../components/ui';
 export function Login() {
   const { login } = useAuth();
   const { t } = useI18n();
+  const clinicName = useClinicName();
   const navigate = useNavigate();
   const [email, setEmail] = useState('admin@clinic.com');
   const [password, setPassword] = useState('admin123');
@@ -40,7 +42,7 @@ export function Login() {
             {t('common.app').charAt(0)}
           </div>
           <h1 className="text-xl font-bold text-fg">{t('login.title')}</h1>
-          <p className="text-sm text-muted">{t('common.clinic')}</p>
+          <p className="text-sm text-muted">{clinicName || t('common.clinic')}</p>
         </div>
         <form onSubmit={submit} className="space-y-4">
           <ErrorText>{error}</ErrorText>

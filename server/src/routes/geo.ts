@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../lib/http';
+import { rateLimit } from '../lib/rateLimit';
+import { getSettings } from '../lib/settings';
 import { authenticate } from '../middleware/auth';
 import {
   assertGoogleConfigured,
@@ -13,6 +15,8 @@ import {
 export const geoRouter = Router();
 
 geoRouter.use(authenticate);
+// Every call here is a paid Google request: cap what a single login can spend.
+geoRouter.use(rateLimit({ windowMs: 60_000, max: 240 }));
 
 const coord = z
   .string()
@@ -41,6 +45,13 @@ const routeQuery = z.object({
     .enum(['0', '1'])
     .optional()
     .transform((v) => v !== '0'),
+  // Planned departure (ISO time). Traffic is estimated for that moment; past times are ignored.
+  depart: z
+    .string()
+    .datetime({ offset: true })
+    .optional()
+    .transform((v) => (v ? new Date(v) : undefined))
+    .refine((d) => !d || d.getTime() < Date.now() + 90 * 24 * 3600_000, 'departure must be within 90 days'),
   tolls: flag, // avoid tolls
   highways: flag, // avoid highways
   ferries: flag, // avoid ferries
@@ -55,6 +66,7 @@ geoRouter.get(
     const q = routeQuery.parse(req.query);
     const routes = await computeRoutes(q.from, q.to, {
       mode: q.mode,
+      departureTime: q.depart,
       alternatives: q.alt,
       avoidTolls: q.tolls,
       avoidHighways: q.highways,
@@ -71,7 +83,8 @@ geoRouter.get(
     const q = z.object({ q: z.string().trim().max(200), session }).parse(req.query);
     assertGoogleConfigured();
     if (q.q.length < 2) return res.json([]);
-    res.json(await autocompletePlaces(q.q, q.session));
+    const s = await getSettings();
+    res.json(await autocompletePlaces(q.q, q.session, { lat: s.mapCenterLat, lng: s.mapCenterLng }));
   }),
 );
 

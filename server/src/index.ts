@@ -4,7 +4,7 @@ import cors from 'cors';
 import express from 'express';
 import morgan from 'morgan';
 import { env, googleMapsEnabled, traccarEnabled } from './env';
-import { errorHandler, notFoundHandler } from './lib/http';
+import { asyncHandler, errorHandler, notFoundHandler } from './lib/http';
 import { authRouter } from './routes/auth';
 import { usersRouter } from './routes/users';
 import { driversRouter } from './routes/drivers';
@@ -14,6 +14,8 @@ import { tripsRouter } from './routes/trips';
 import { maintenanceRouter } from './routes/maintenance';
 import { dashboardRouter } from './routes/dashboard';
 import { geoRouter } from './routes/geo';
+import { settingsRouter } from './routes/settings';
+import { getSettings } from './lib/settings';
 
 const app = express();
 
@@ -25,16 +27,21 @@ app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'transfer-se
 
 // Public runtime config for the web client.
 // Maps, routing and place search all use Google Maps (GOOGLE_MAPS_API_KEY).
-app.get('/api/config', (_req, res) => {
-  res.json({
-    mapProvider: 'google',
-    googleMapsApiKey: env.googleMapsApiKey,
-    googleMapId: env.googleMapId,
-    traccarEnabled,
-    defaultCenter: { lat: env.mapCenterLat, lng: env.mapCenterLng },
-    defaultZoom: env.mapCenterZoom,
-  });
-});
+app.get(
+  '/api/config',
+  asyncHandler(async (_req, res) => {
+    const settings = await getSettings();
+    res.json({
+      mapProvider: 'google',
+      googleMapsApiKey: env.googleMapsApiKey,
+      googleMapId: env.googleMapId,
+      traccarEnabled,
+      clinicName: settings.clinicName,
+      defaultCenter: { lat: settings.mapCenterLat, lng: settings.mapCenterLng },
+      defaultZoom: settings.mapZoom,
+    });
+  }),
+);
 
 app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
@@ -45,6 +52,7 @@ app.use('/api/trips', tripsRouter);
 app.use('/api/maintenance', maintenanceRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/geo', geoRouter);
+app.use('/api/settings', settingsRouter);
 
 // Optionally serve the built web app (production single-port deployment).
 const candidateDistPaths = [

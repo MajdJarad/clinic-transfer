@@ -1,15 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../../i18n';
-import { useMapConfig } from '../../config';
-import {
-  createHtmlMarker,
-  escapeHtml,
-  ISTANBUL_CENTER,
-  loadGoogleMaps,
-  pinHtml,
-  type HtmlMarker,
-} from './googleMaps';
+import { createHtmlMarker, escapeHtml, pinHtml, type HtmlMarker } from './googleMaps';
+import { useGoogleMap, useMapLayers } from './useGoogleMap';
 
 export interface MapPoint {
   id: string;
@@ -40,47 +33,12 @@ export function MapView({
   fit = true,
 }: MapViewProps) {
   const { t, dir } = useI18n();
-  const { googleMapsApiKey } = useMapConfig();
-  const divRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
-  const gRef = useRef<any>(null);
+  const gm = useGoogleMap({ center, zoom });
+  const { mapRef, gRef, ready } = gm;
   const markersRef = useRef<HtmlMarker[]>([]);
   const routeRef = useRef<any>(null);
-  const trafficRef = useRef<any>(null);
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState('');
   const [showTraffic, setShowTraffic] = useState(false);
-
-  // Load the Google Maps script.
-  useEffect(() => {
-    if (!googleMapsApiKey) return;
-    let cancelled = false;
-    loadGoogleMaps(googleMapsApiKey)
-      .then((g) => {
-        if (cancelled) return;
-        gRef.current = g;
-        setReady(true);
-      })
-      .catch((e) => !cancelled && setError(e.message));
-    return () => {
-      cancelled = true;
-    };
-  }, [googleMapsApiKey]);
-
-  // Initialise the map once.
-  useEffect(() => {
-    if (!ready || !divRef.current || mapRef.current) return;
-    const g = gRef.current;
-    mapRef.current = new g.maps.Map(divRef.current, {
-      center: center ?? ISTANBUL_CENTER,
-      zoom: zoom ?? 11,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-      gestureHandling: 'greedy',
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready]);
+  useMapLayers(gm, { traffic: showTraffic });
 
   // Markers.
   useEffect(() => {
@@ -145,20 +103,7 @@ export function MapView({
     }
   }, [ready, route, routeLatLng]);
 
-  // Google live traffic layer.
-  useEffect(() => {
-    const map = mapRef.current;
-    const g = gRef.current;
-    if (!map || !g) return;
-    if (showTraffic) {
-      if (!trafficRef.current) trafficRef.current = new g.maps.TrafficLayer();
-      trafficRef.current.setMap(map);
-    } else {
-      trafficRef.current?.setMap(null);
-    }
-  }, [ready, showTraffic]);
-
-  if (!googleMapsApiKey) {
+  if (gm.keyMissing) {
     return (
       <div
         className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-surface2 p-6 text-center text-sm text-muted"
@@ -170,20 +115,20 @@ export function MapView({
     );
   }
 
-  if (error) {
+  if (gm.error) {
     return (
       <div
         className="flex items-center justify-center rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
         style={{ height }}
       >
-        {t('map.loadError', { msg: error })}
+        {t('map.loadError', { msg: gm.error })}
       </div>
     );
   }
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-border" style={{ height }}>
-      <div ref={divRef} className="h-full w-full" />
+      <div ref={gm.divRef} className="h-full w-full" />
       <button
         type="button"
         onClick={() => setShowTraffic((s) => !s)}

@@ -2,7 +2,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../../api';
 import { useMapConfig } from '../../config';
+import { useTheme } from '../../theme';
 import { createHtmlMarker, loadGoogleMaps, pinHtml, type HtmlMarker } from './googleMaps';
+import { DARK_STYLE } from './mapStyles';
 import {
   arrivalClock,
   bearing,
@@ -65,6 +67,7 @@ function speak(text: string, muted: boolean) {
 
 export function NavigationScreen({ origin, destination, mode, route, startWithGps, avoid, onExit }: NavigationScreenProps) {
   const { googleMapsApiKey, googleMapId } = useMapConfig();
+  const { theme } = useTheme();
 
   // ── render state
   const [model, setModel] = useState<RouteModel>(() => buildRouteModel(route));
@@ -172,6 +175,12 @@ export function NavigationScreen({ origin, destination, mode, route, startWithGp
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [googleMapsApiKey]);
+
+  // Night map in dark mode (a Cloud Map ID carries its own style)
+  useEffect(() => {
+    if (!mapReady || googleMapId) return;
+    mapRef.current?.setOptions({ styles: theme === 'dark' ? DARK_STYLE : [] });
+  }, [mapReady, theme, googleMapId]);
 
   // ── (re)draw the route whenever the route model changes (start, or after a reroute)
   useEffect(() => {

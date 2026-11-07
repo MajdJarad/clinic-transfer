@@ -34,9 +34,10 @@ COPY --from=builder /app/server/package*.json ./server/
 COPY --from=builder /app/server/node_modules ./server/node_modules
 COPY --from=builder /app/server/dist ./server/dist
 COPY --from=builder /app/server/prisma ./server/prisma
+COPY --from=builder /app/server/docker-entrypoint.sh ./server/docker-entrypoint.sh
 COPY --from=builder /app/web/dist ./web/dist
 
 WORKDIR /app/server
 EXPOSE 3000
 
-CMD ["node", "dist/index.js"]
+CMD ["sh", "./docker-entrypoint.sh"]

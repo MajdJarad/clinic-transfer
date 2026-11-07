@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { useClinicName } from '../config';
 import { useI18n } from '../i18n';
 import { roleKeys } from '../labels';
 import { LanguageSelect, ThemeToggle } from './Controls';
@@ -33,6 +34,7 @@ const NAV: NavItem[] = [
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { t } = useI18n();
+  const clinicName = useClinicName();
   const items = NAV.filter((n) => !n.adminOnly || user?.role === 'ADMIN');
 
   const linkClass = (isActive: boolean) =>
@@ -51,7 +53,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-bold text-fg">{t('common.app')}</p>
-            <p className="truncate text-xs text-muted">{t('common.clinic')}</p>
+            <p className="truncate text-xs text-muted">{clinicName || t('common.clinic')}</p>
           </div>
         </div>
 

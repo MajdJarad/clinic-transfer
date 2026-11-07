@@ -7,6 +7,8 @@ export interface RouteRequest {
   avoidTolls: boolean;
   avoidHighways: boolean;
   avoidFerries: boolean;
+  /** ISO time of a planned departure (traffic is estimated for it); omit for "leave now". */
+  departAt?: string;
 }
 
 export const NO_AVOID = { avoidTolls: false, avoidHighways: false, avoidFerries: false } as const;
@@ -22,7 +24,7 @@ export function useRoutes(from: LatLng | null, to: LatLng | null, req: RouteRequ
   const [retryable, setRetryable] = useState(true);
   const [nonce, setNonce] = useState(0);
 
-  const { mode, avoidTolls, avoidHighways, avoidFerries } = req;
+  const { mode, avoidTolls, avoidHighways, avoidFerries, departAt } = req;
   const [fLat, fLng, tLat, tLng] = [from?.lat, from?.lng, to?.lat, to?.lng];
 
   useEffect(() => {
@@ -41,7 +43,7 @@ export function useRoutes(from: LatLng | null, to: LatLng | null, req: RouteRequ
     let cancelled = false;
     setLoading(true);
     api.geo
-      .route({ lat: fLat, lng: fLng }, { lat: tLat, lng: tLng }, { mode, alternatives: true, avoidTolls, avoidHighways, avoidFerries })
+      .route({ lat: fLat, lng: fLng }, { lat: tLat, lng: tLng }, { mode, alternatives: true, avoidTolls, avoidHighways, avoidFerries, departureTime: departAt })
       .then((res) => !cancelled && setRoutes(res.routes?.length ? res.routes : [res]))
       .catch((e: Error) => {
         if (cancelled) return;
@@ -53,7 +55,7 @@ export function useRoutes(from: LatLng | null, to: LatLng | null, req: RouteRequ
     return () => {
       cancelled = true;
     };
-  }, [fLat, fLng, tLat, tLng, mode, avoidTolls, avoidHighways, avoidFerries, nonce]);
+  }, [fLat, fLng, tLat, tLng, mode, avoidTolls, avoidHighways, avoidFerries, departAt, nonce]);
 
   return { routes, loading, error, retryable, retry: () => setNonce((n) => n + 1) };
 }

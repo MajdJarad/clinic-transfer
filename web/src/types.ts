@@ -131,3 +131,23 @@ export interface ArrivalMessage {
   text: string;
   link: string;
 }
+
+// Admin-editable settings, stored on the server (see Administration).
+export interface AppSettings {
+  clinicName: string;
+  defaultCountryCode: string;
+  whatsappTemplate: string;
+  mapCenterLat: number;
+  mapCenterLng: number;
+  mapZoom: number;
+}
+
+export interface SystemInfo {
+  version: string;
+  environment: string;
+  node: string;
+  uptimeSeconds: number;
+  database: { provider: string; file: string; mayBeEphemeral: boolean };
+  google: { mapsConfigured: boolean; mapIdConfigured: boolean };
+  traccarEnabled: boolean;
+}
