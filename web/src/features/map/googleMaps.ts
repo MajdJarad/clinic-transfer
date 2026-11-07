@@ -16,12 +16,25 @@ export const ISTANBUL_CENTER: LatLng = { lat: 41.0082, lng: 28.9784 };
 let scriptPromise: Promise<any> | null = null;
 let loadedKey = '';
 
+// With `loading=async` Google calls the callback as soon as its bootstrap is ready, BEFORE the real
+// libraries exist (google.maps.Map can still be undefined: "Map is not a constructor", seen on slow
+// connections). So the promise resolves only after the libraries we use have been imported.
+const LIBRARIES = ['core', 'maps', 'streetView'];
+
 export function loadGoogleMaps(key: string): Promise<any> {
-  if (window.google?.maps && loadedKey === key) return Promise.resolve(window.google);
-  if (scriptPromise && loadedKey === key) return scriptPromise;
+  if (scriptPromise && loadedKey === key) return scriptPromise; // loading, or already loaded
   loadedKey = key;
   scriptPromise = new Promise((resolve, reject) => {
-    window.__gmapReady = () => resolve(window.google);
+    window.__gmapReady = () => {
+      const g = window.google;
+      if (typeof g?.maps?.importLibrary !== 'function') return resolve(g); // classic loader: all is ready
+      Promise.all(LIBRARIES.map((l) => g.maps.importLibrary(l)))
+        .then(() => resolve(g))
+        .catch((e) => {
+          scriptPromise = null;
+          reject(e instanceof Error ? e : new Error('failed to load Google Maps libraries'));
+        });
+    };
     const script = document.createElement('script');
     script.src =
       `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}` +
