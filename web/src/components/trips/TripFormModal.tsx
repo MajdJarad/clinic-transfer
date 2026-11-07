@@ -5,6 +5,7 @@ import { toInputValue } from '../../lib/date';
 import { useI18n } from '../../i18n';
 import { tripTypeKeys } from '../../labels';
 import { Button, ErrorText, Field, Input, Modal, Select, Textarea } from '../ui';
+import { PlaceInput } from '../../features/map/PlaceInput';
 
 const TRIP_TYPES: TripType[] = ['AIRPORT_TO_HOTEL', 'HOTEL_TO_AIRPORT', 'HOTEL_TO_CLINIC', 'CLINIC_TO_HOTEL'];
 
@@ -25,6 +26,10 @@ export function TripFormModal({ open, onClose, onSaved, drivers, trip, defaultSt
     type: 'AIRPORT_TO_HOTEL' as TripType,
     origin: '',
     destination: '',
+    originLat: null as number | null,
+    originLng: null as number | null,
+    destLat: null as number | null,
+    destLng: null as number | null,
     start: '',
     end: '',
     driverId: '',
@@ -45,6 +50,10 @@ export function TripFormModal({ open, onClose, onSaved, drivers, trip, defaultSt
         type: trip.type,
         origin: trip.origin,
         destination: trip.destination,
+        originLat: trip.originLat,
+        originLng: trip.originLng,
+        destLat: trip.destLat,
+        destLng: trip.destLng,
         start: toInputValue(start),
         end: toInputValue(end),
         driverId: trip.driver?.id ?? '',
@@ -59,6 +68,10 @@ export function TripFormModal({ open, onClose, onSaved, drivers, trip, defaultSt
         type: 'AIRPORT_TO_HOTEL',
         origin: '',
         destination: '',
+        originLat: null,
+        originLng: null,
+        destLat: null,
+        destLng: null,
         start: toInputValue(start),
         end: toInputValue(end),
         driverId: '',
@@ -77,6 +90,10 @@ export function TripFormModal({ open, onClose, onSaved, drivers, trip, defaultSt
         type: form.type,
         origin: form.origin,
         destination: form.destination,
+        originLat: form.originLat,
+        originLng: form.originLng,
+        destLat: form.destLat,
+        destLng: form.destLng,
         scheduledAt: new Date(form.start).toISOString(),
         endAt: form.end ? new Date(form.end).toISOString() : null,
         driverId: form.driverId || null,
@@ -133,12 +150,33 @@ export function TripFormModal({ open, onClose, onSaved, drivers, trip, defaultSt
               ))}
             </Select>
           </Field>
-          <Field label={t('tripForm.origin')}>
-            <Input value={form.origin} onChange={(e) => setForm({ ...form, origin: e.target.value })} placeholder={t('tripForm.phOrigin')} />
-          </Field>
-          <Field label={t('tripForm.destination')}>
-            <Input value={form.destination} onChange={(e) => setForm({ ...form, destination: e.target.value })} placeholder={t('tripForm.phDestination')} />
-          </Field>
+          {/* Plain wrappers (not <Field>): a <label> around a suggestion list would hijack its clicks. */}
+          <div>
+            <span className="mb-1 block text-sm font-medium text-muted">{t('tripForm.origin')}</span>
+            <PlaceInput
+              value={form.origin}
+              badge="A"
+              badgeClass="bg-emerald-600"
+              placeholder={t('tripForm.phOrigin')}
+              unresolved={!!form.origin && form.originLat == null}
+              onChange={(text) => setForm({ ...form, origin: text, originLat: null, originLng: null })}
+              onPick={(pl) => setForm({ ...form, origin: pl.label, originLat: pl.lat, originLng: pl.lng })}
+              onClear={() => setForm({ ...form, origin: '', originLat: null, originLng: null })}
+            />
+          </div>
+          <div>
+            <span className="mb-1 block text-sm font-medium text-muted">{t('tripForm.destination')}</span>
+            <PlaceInput
+              value={form.destination}
+              badge="B"
+              badgeClass="bg-red-600"
+              placeholder={t('tripForm.phDestination')}
+              unresolved={!!form.destination && form.destLat == null}
+              onChange={(text) => setForm({ ...form, destination: text, destLat: null, destLng: null })}
+              onPick={(pl) => setForm({ ...form, destination: pl.label, destLat: pl.lat, destLng: pl.lng })}
+              onClear={() => setForm({ ...form, destination: '', destLat: null, destLng: null })}
+            />
+          </div>
           <Field label={t('tripForm.start')}>
             <Input type="datetime-local" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} />
           </Field>

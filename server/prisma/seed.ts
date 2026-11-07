@@ -119,16 +119,29 @@ async function main() {
     };
     const dur = (h: number, m: number) => new Date(at(h, m).getTime() + 60 * 60 * 1000);
 
+    // Demo places in Istanbul, with real coordinates so navigation works out of the box.
+    // (The clinic location is a placeholder in Sisli: set the real one when you create your trips.)
+    const AIRPORT = { name: 'مطار إسطنبول', lat: 41.2753, lng: 28.7519 };
+    const HOTEL = { name: 'فندق في ميدان تقسيم', lat: 41.037, lng: 28.9851 };
+    const CLINIC = { name: 'عيادة النخبة الطبية - شيشلي', lat: 41.0602, lng: 28.9877 };
+    const place = (o: typeof AIRPORT, d: typeof AIRPORT) => ({
+      origin: o.name,
+      originLat: o.lat,
+      originLng: o.lng,
+      destination: d.name,
+      destLat: d.lat,
+      destLng: d.lng,
+    });
+
     await prisma.trip.createMany({
       data: [
         {
           patientName: 'سارة العتيبي',
           patientPhone: '0551112233',
           driverId: drivers[0].id,
-          vehicleId: (await prisma.vehicle.findUnique({ where: { plate: 'ABC-1001' } }))!.id,
+          vehicleId: (await prisma.vehicle.findUnique({ where: { plate: VEHICLES[0].plate } }))!.id,
           type: 'AIRPORT_TO_HOTEL',
-          origin: 'مطار الملك خالد الدولي',
-          destination: 'فندق الرياض - الحي الدبلوماسي',
+          ...place(AIRPORT, HOTEL),
           scheduledAt: at(10, 30),
           endAt: dur(10, 30),
           status: 'ASSIGNED',
@@ -138,8 +151,7 @@ async function main() {
           patientPhone: '0552223344',
           driverId: drivers[1].id,
           type: 'HOTEL_TO_CLINIC',
-          origin: 'فندق الرياض - الحي الدبلوماسي',
-          destination: 'عيادة النخبة الطبية',
+          ...place(HOTEL, CLINIC),
           scheduledAt: at(13, 0),
           endAt: dur(13, 0),
           status: 'ASSIGNED',
@@ -148,8 +160,7 @@ async function main() {
           patientName: 'ريم البقمي',
           patientPhone: '0553334455',
           type: 'CLINIC_TO_HOTEL',
-          origin: 'عيادة النخبة الطبية',
-          destination: 'فندق الرياض - الحي الدبلوماسي',
+          ...place(CLINIC, HOTEL),
           scheduledAt: at(16, 30),
           endAt: dur(16, 30),
           status: 'SCHEDULED',
@@ -159,7 +170,7 @@ async function main() {
 
     await prisma.maintenance.create({
       data: {
-        vehicleId: (await prisma.vehicle.findUnique({ where: { plate: 'ABC-1004' } }))!.id,
+        vehicleId: (await prisma.vehicle.findUnique({ where: { plate: VEHICLES[3].plate } }))!.id,
         type: 'ROUTINE',
         title: 'صيانة دورية 10,000 كم',
         description: 'تغيير زيت وفلتر',

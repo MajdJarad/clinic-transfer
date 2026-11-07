@@ -78,16 +78,19 @@ tripsRouter.get(
   }),
 );
 
+const lat = z.number().min(-90).max(90).nullish();
+const lng = z.number().min(-180).max(180).nullish();
+
 const createSchema = z.object({
   patientName: z.string().min(1),
   patientPhone: z.string().min(3),
   type: tripTypeSchema,
   origin: z.string().min(1),
   destination: z.string().min(1),
-  originLat: z.number().optional(),
-  originLng: z.number().optional(),
-  destLat: z.number().optional(),
-  destLng: z.number().optional(),
+  originLat: lat,
+  originLng: lng,
+  destLat: lat,
+  destLng: lng,
   scheduledAt: z.coerce.date(),
   endAt: z.coerce.date().nullish(),
   driverId: z.string().nullish(),

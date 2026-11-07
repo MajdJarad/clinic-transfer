@@ -45,13 +45,24 @@ export function escapeHtml(s: string): string {
 export interface HtmlMarker {
   setMap(map: any): void;
   getPosition(): LatLng;
+  setPosition(p: LatLng): void;
+  /** The marker's root element (null until it has been added to a map). */
+  element(): HTMLDivElement | null;
 }
 
-// A marker whose look is plain HTML, anchored at its bottom-center on the position.
+// A marker whose look is plain HTML. `anchor` picks which point of the element sits on the
+// position: the bottom-center (pins) or the center (a moving vehicle dot).
 // (Avoids AdvancedMarkerElement, which requires a Map ID from Google Cloud.)
-export function createHtmlMarker(g: any, position: LatLng, html: string, onClick?: () => void): HtmlMarker {
+export function createHtmlMarker(
+  g: any,
+  position: LatLng,
+  html: string,
+  onClick?: () => void,
+  anchor: 'bottom' | 'center' = 'bottom',
+): HtmlMarker {
   class Overlay extends g.maps.OverlayView {
     div: HTMLDivElement | null = null;
+    pos: LatLng = position;
     onAdd() {
       const div = document.createElement('div');
       div.style.position = 'absolute';
@@ -63,18 +74,27 @@ export function createHtmlMarker(g: any, position: LatLng, html: string, onClick
     }
     draw() {
       if (!this.div) return;
-      const p = this.getProjection().fromLatLngToDivPixel(new g.maps.LatLng(position.lat, position.lng));
+      const proj = this.getProjection();
+      if (!proj) return;
+      const p = proj.fromLatLngToDivPixel(new g.maps.LatLng(this.pos.lat, this.pos.lng));
       if (!p) return;
       this.div.style.left = `${p.x}px`;
       this.div.style.top = `${p.y}px`;
-      this.div.style.transform = 'translate(-50%, -100%)';
+      this.div.style.transform = anchor === 'center' ? 'translate(-50%, -50%)' : 'translate(-50%, -100%)';
     }
     onRemove() {
       this.div?.remove();
       this.div = null;
     }
     getPosition() {
-      return position;
+      return this.pos;
+    }
+    setPosition(p: LatLng) {
+      this.pos = p;
+      this.draw();
+    }
+    element() {
+      return this.div;
     }
   }
   return new Overlay() as unknown as HtmlMarker;

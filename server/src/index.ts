@@ -24,12 +24,12 @@ app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'transfer-server' }));
 
 // Public runtime config for the web client.
-// Maps are rendered with Google Maps (GOOGLE_MAPS_API_KEY). Routing and place
-// search also go through Google when the key is set (see routes/geo.ts).
+// Maps, routing and place search all use Google Maps (GOOGLE_MAPS_API_KEY).
 app.get('/api/config', (_req, res) => {
   res.json({
     mapProvider: 'google',
     googleMapsApiKey: env.googleMapsApiKey,
+    googleMapId: env.googleMapId,
     traccarEnabled,
     defaultCenter: { lat: env.mapCenterLat, lng: env.mapCenterLng },
     defaultZoom: env.mapCenterZoom,

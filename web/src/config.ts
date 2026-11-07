@@ -4,6 +4,7 @@ import { api } from './api';
 export interface MapConfig {
   mapProvider: string;
   googleMapsApiKey: string;
+  googleMapId: string; // optional Cloud Map ID (vector map -> heading-up navigation)
   traccarEnabled: boolean;
   defaultCenter: { lat: number; lng: number };
   defaultZoom: number;
@@ -12,6 +13,7 @@ export interface MapConfig {
 const FALLBACK: MapConfig = {
   mapProvider: 'google',
   googleMapsApiKey: '',
+  googleMapId: '',
   traccarEnabled: false,
   defaultCenter: { lat: 41.0082, lng: 28.9784 },
   defaultZoom: 11,
