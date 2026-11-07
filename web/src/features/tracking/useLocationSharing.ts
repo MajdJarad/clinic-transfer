@@ -1,49 +1,32 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../../api';
 import { haversine } from '../map/routeNav';
 
 export type SharingState = 'off' | 'starting' | 'live' | 'denied' | 'unavailable';
 
-const KEY = 'driver_share_location';
 const MIN_GAP_MS = 4000; // moving: at most one report every 4 s
 const HEARTBEAT_MS = 15000; // standing still: still report this often, so the driver stays "live" (a stationary phone emits no new fixes)
 const MOVED_M = 15; // moved this far => report as soon as the minimum gap allows
 const TICK_MS = 1500; // how often we look at the latest fix and decide
 
-/** The driver's choice to share (on by default); remembered on the phone. */
-function readEnabled(): boolean {
-  try {
-    return localStorage.getItem(KEY) !== '0';
-  } catch {
-    return true;
-  }
-}
-
 /**
  * Continuously reports the phone's position (browser geolocation, i.e. the device's own GPS/Google
- * location services) to the server, so coordinators see the driver live. It starts by itself while the
- * driver app is open; the driver can switch it off. A web page can only do this while it is open and
- * the screen is on, so a wake lock keeps the screen awake while sharing.
+ * location services) to the server, so coordinators see the driver live and the trip status can follow
+ * the car. It starts by itself while the driver app is open and there is no switch to turn it off: the
+ * driver is always visible, on a trip or not. A web page can only do this while it is open and the
+ * screen is on, so a wake lock keeps the screen awake.
  */
-export function useLocationSharing(driverId: string | null | undefined) {
-  const [enabled, setEnabledState] = useState(readEnabled);
+export function useLocationSharing(driverId: string | null | undefined, onTripUpdate?: () => void) {
   const [state, setState] = useState<SharingState>('off');
   const [lastSentAt, setLastSentAt] = useState<number | null>(null);
   const last = useRef<{ at: number; lat: number; lng: number } | null>(null);
   const inFlight = useRef(false);
-
-  const setEnabled = useCallback((on: boolean) => {
-    setEnabledState(on);
-    try {
-      localStorage.setItem(KEY, on ? '1' : '0');
-    } catch {
-      /* the choice just isn't remembered */
-    }
-  }, []);
+  const onUpdate = useRef(onTripUpdate);
+  onUpdate.current = onTripUpdate;
 
   useEffect(() => {
-    if (!driverId || !enabled) {
+    if (!driverId) {
       setState('off');
       return;
     }
@@ -62,7 +45,7 @@ export function useLocationSharing(driverId: string | null | undefined) {
       const { latitude: lat, longitude: lng, heading, speed, accuracy } = pos.coords;
       inFlight.current = true;
       try {
-        await api.drivers.sendLocation(driverId, {
+        const reply = await api.drivers.sendLocation(driverId, {
           lat,
           lng,
           heading: heading != null && Number.isFinite(heading) && (speed ?? 0) > 0.5 ? heading : null,
@@ -70,6 +53,8 @@ export function useLocationSharing(driverId: string | null | undefined) {
           accuracy: Number.isFinite(accuracy) ? accuracy : null,
         });
         last.current = { at: Date.now(), lat, lng };
+        // The server moved a trip along (arrived / picked up / completed): refresh the screen at once.
+        if (alive && reply?.tripUpdate) onUpdate.current?.();
         if (alive) {
           setLastSentAt(Date.now());
           setState('live');
@@ -115,7 +100,7 @@ export function useLocationSharing(driverId: string | null | undefined) {
       document.removeEventListener('visibilitychange', keepAwake);
       lock?.release?.().catch?.(() => {});
     };
-  }, [driverId, enabled]);
+  }, [driverId]);
 
-  return { enabled, setEnabled, state, lastSentAt };
+  return { state, lastSentAt };
 }

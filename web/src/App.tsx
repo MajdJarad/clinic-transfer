@@ -11,7 +11,9 @@ import { Drivers } from './pages/Drivers';
 import { Vehicles } from './pages/Vehicles';
 import { MaintenancePage } from './pages/Maintenance';
 import { Administration } from './pages/Administration';
+import { Alerts } from './pages/Alerts';
 import { DriverApp } from './pages/DriverApp';
+import { UpdateBanner } from './features/update/UpdateBanner';
 
 function AppRoutes() {
   const { user } = useAuth();
@@ -28,6 +30,7 @@ function AppRoutes() {
         <Route path="/trips-list" element={<Trips />} />
         <Route path="/map" element={<MapPage />} />
         <Route path="/tracking" element={<Tracking />} />
+        <Route path="/alerts" element={<Alerts />} />
         <Route path="/drivers" element={<Drivers />} />
         <Route path="/vehicles" element={<Vehicles />} />
         <Route path="/maintenance" element={<MaintenancePage />} />
@@ -43,6 +46,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <AppRoutes />
+        <UpdateBanner />
       </AuthProvider>
     </BrowserRouter>
   );

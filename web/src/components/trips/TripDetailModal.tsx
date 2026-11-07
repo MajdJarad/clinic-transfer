@@ -20,6 +20,8 @@ interface TripDetailModalProps {
   onNavigate?: (trip: Trip) => void;
   /** Permanently delete the trip. Only passed to roles allowed to (never drivers); asks to confirm first. */
   onDelete?: (trip: Trip) => Promise<void> | void;
+  /** Tell the patient the car has arrived (the driver's button: the number is never shown). Returns the message to show. */
+  onNotifyPatient?: (trip: Trip) => Promise<string>;
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -31,11 +33,13 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export function TripDetailModal({ trip, onClose, onEdit, onAssign, onWhatsApp, onStatus, onCancel, onNavigate, onDelete }: TripDetailModalProps) {
+export function TripDetailModal({ trip, onClose, onEdit, onAssign, onWhatsApp, onStatus, onCancel, onNavigate, onDelete, onNotifyPatient }: TripDetailModalProps) {
   const { t, intl } = useI18n();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [notifyMsg, setNotifyMsg] = useState('');
+  const [notifying, setNotifying] = useState(false);
   const navigate = useNavigate();
 
   const startNavigation = (tr: Trip) => {
@@ -106,6 +110,26 @@ export function TripDetailModal({ trip, onClose, onEdit, onAssign, onWhatsApp, o
               <span>🧭</span>
               <span>انطلاق للملاحة</span>
             </Button>
+            {onNotifyPatient && trip.status !== 'COMPLETED' && trip.status !== 'CANCELLED' && (
+              <Button
+                size="sm"
+                variant="success"
+                loading={notifying}
+                onClick={async () => {
+                  setNotifying(true);
+                  try {
+                    setNotifyMsg(await onNotifyPatient(trip));
+                  } catch (e) {
+                    setNotifyMsg(e instanceof Error ? e.message : 'تعذّر الإرسال');
+                  } finally {
+                    setNotifying(false);
+                  }
+                }}
+                data-testid="detail-notify"
+              >
+                📨 تبليغ المريض
+              </Button>
+            )}
             {onStatus && (
               <Select
                 className="w-40 !py-1.5 text-sm"
@@ -151,6 +175,7 @@ export function TripDetailModal({ trip, onClose, onEdit, onAssign, onWhatsApp, o
             </p>
           )}
           {deleteError && <p className="text-xs font-semibold text-red-600">{deleteError}</p>}
+          {notifyMsg && <p className="text-xs font-semibold text-muted" data-testid="detail-notify-msg">{notifyMsg}</p>}
 
           <ConfirmDialog
             open={confirmDelete}

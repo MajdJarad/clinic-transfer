@@ -3,7 +3,7 @@ import { api } from '../api';
 import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
 import { useLocationSharing } from '../features/tracking/useLocationSharing';
-import { NEXT_ACTION } from '../lib/tripFlow';
+import { DriverAlertButton } from '../features/alerts/DriverAlertButton';
 import { MapScreen } from './MapPage';
 import { ThemeToggle } from '../components/Controls';
 import {
@@ -57,9 +57,6 @@ export function DriverApp() {
   const [calDetailTrip, setCalDetailTrip] = useState<Trip | null>(null);
   const [calQuery, setCalQuery] = useState('');
 
-  // The phone shares its position with the clinic by itself while this app is open (the driver can pause it).
-  const share = useLocationSharing(driverId);
-
   // The map tab fills the whole screen between the header and the bottom bar.
   const headerRef = useRef<HTMLElement>(null);
   const navBarRef = useRef<HTMLElement>(null);
@@ -109,6 +106,10 @@ export function DriverApp() {
     }).catch(() => {});
   }, [driverId]);
 
+  // The phone shares its position with the clinic by itself while this app is open: always on, no switch.
+  // When the server moves a trip along because of that position, the screen refreshes at once.
+  const share = useLocationSharing(driverId, loadDriver);
+
   // Load Maintenance Records
   const loadMaintenance = useCallback(() => {
     setMaintenanceLoading(true);
@@ -123,6 +124,13 @@ export function DriverApp() {
     loadDriver();
     loadMaintenance();
   }, [loadDriver, loadMaintenance]);
+
+  // A trip's status follows the car (arrived / picked up / completed are decided on the server from the
+  // live position), so the screen keeps asking for the current state.
+  useEffect(() => {
+    const id = setInterval(() => document.visibilityState === 'visible' && loadDriver(), 5000);
+    return () => clearInterval(id);
+  }, [loadDriver]);
 
   // ─── Calendar Calculations ───
   const calDays = useMemo(() => {
@@ -172,14 +180,12 @@ export function DriverApp() {
     setActiveTab('navigation');
   };
 
-  // Step Advance Trip
-  const advanceTrip = async (tr: Trip) => {
-    const action = NEXT_ACTION[tr.status];
-    if (!action) return;
-    const updated = await api.trips.setStatus(tr.id, action.status);
+  // "Go": the driver sets off towards the patient. This is the only status the driver sets; after it the
+  // trip follows the car's position by itself.
+  const startTrip = async (tr: Trip) => {
+    const updated = await api.trips.start(tr.id);
     setTrips((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
     if (selectedRef.current?.id === updated.id) setSelectedTrip(updated);
-    loadDriver();
   };
 
   // Submit Maintenance / Defect Report
@@ -228,30 +234,15 @@ export function DriverApp() {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Live location sharing: on by itself, the driver can pause it */}
-            <button
-              type="button"
-              onClick={() => share.setEnabled(!share.enabled)}
-              title={share.enabled ? 'موقعك يُشارك مع المنسق مباشرة. اضغط للإيقاف' : 'اضغط لتشغيل مشاركة موقعك مع المنسق'}
-              className={`rounded-lg border px-2.5 py-1 text-xs font-bold ${
-                share.state === 'live'
-                  ? 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300'
-                  : share.state === 'off'
-                    ? 'border-white/20 bg-white/10 text-white/70'
-                    : 'border-amber-500/40 bg-amber-500/20 text-amber-200'
-              }`}
-              data-testid="share-toggle"
-            >
-              {share.state === 'live'
-                ? '📡 مباشر'
-                : share.state === 'starting'
-                  ? '📡 …'
-                  : share.state === 'denied'
-                    ? '⚠️ فعّل الموقع'
-                    : share.state === 'unavailable'
-                      ? '⚠️ غير متاح'
-                      : '⏸ متوقف'}
-            </button>
+            {/* The phone shares its position by itself, always: nothing to press. Only a problem is shown. */}
+            {share.state === 'live' ? (
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" title="موقعك يصل للمنسق مباشرة" data-testid="share-dot" />
+            ) : (
+              <span className="rounded-lg border border-amber-500/40 bg-amber-500/20 px-2 py-1 text-[11px] font-bold text-amber-200" data-testid="share-problem">
+                {share.state === 'denied' ? '⚠️ فعّل إذن الموقع' : share.state === 'unavailable' ? '⚠️ الموقع غير متاح' : '📡 …'}
+              </span>
+            )}
+            <DriverAlertButton />
             {/* Read-Only Status Display (Set by Admin/Coordinator) */}
             <span
               className={`rounded-lg px-2.5 py-1 text-xs font-bold border flex items-center gap-1.5 ${
@@ -390,6 +381,7 @@ export function DriverApp() {
                   onCreate={() => {}}
                   onEventClick={setCalDetailTrip}
                   onEventMove={() => {}}
+                  readOnly
                   onDayHeaderClick={(d) => {
                     setCalAnchor(d);
                     setCalView('day');
@@ -416,7 +408,7 @@ export function DriverApp() {
               key={selectedTrip?.id ?? 'free'}
               className="h-full rounded-none"
               trip={selectedTrip}
-              onAdvanceTrip={advanceTrip}
+              onStartTrip={startTrip}
             />
           </div>
         )}
@@ -527,15 +519,16 @@ export function DriverApp() {
       </nav>
 
       {/* ─── Calendar Trip Detail Modal ─── */}
+      {/* The driver only looks at the calendar: no edit, no status, no create/move/delete. The two actions
+          are "Go" (navigate) and telling the patient the car is here. */}
       <TripDetailModal
         trip={calDetailTrip}
         onClose={() => setCalDetailTrip(null)}
-        onStatus={async (tr, st) => {
-          await api.trips.setStatus(tr.id, st);
-          setCalDetailTrip(null);
-          loadDriver();
-        }}
         onNavigate={(tr) => startNavForTrip(tr)}
+        onNotifyPatient={async (tr) => {
+          const r = await api.trips.notifyPatient(tr.id);
+          return r.status === 'requested' ? '✓ أُبلغ المنسق ليرسل الرسالة للمريض' : '✓ أُرسلت الرسالة للمريض';
+        }}
       />
 
       {/* ─── Report Maintenance / Defect Modal ─── */}

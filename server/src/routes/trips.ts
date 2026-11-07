@@ -5,6 +5,7 @@ import { prisma } from '../db';
 import { asyncHandler, HttpError } from '../lib/http';
 import { authenticate, requireRole } from '../middleware/auth';
 import { redactPatientPhone } from '../lib/privacy';
+import { ACTIVE_STATUSES, setTripStatus } from '../lib/tripProgress';
 import { getSettings } from '../lib/settings';
 import { whatsappCloudEnabled } from '../env';
 import { sendWhatsAppMessage } from '../services/whatsappCloud';
@@ -202,38 +203,31 @@ tripsRouter.patch(
 
 const statusSchema = z.object({ status: tripStatusSchema });
 
+// Coordinators and admins can set any status by hand. Drivers cannot: a trip follows their live
+// position (see lib/tripProgress.ts), and their only action is "Go" below.
 tripsRouter.patch(
   '/:id/status',
+  requireRole('ADMIN', 'COORDINATOR'),
   asyncHandler(async (req, res) => {
     const { status } = statusSchema.parse(req.body);
     const trip = await prisma.trip.findUnique({ where: { id: req.params.id } });
     if (!trip) throw new HttpError(404, 'Trip not found');
-    if (req.user!.role === 'DRIVER' && trip.driverId !== req.user!.driverId) {
-      throw new HttpError(403, 'Insufficient permissions');
+    res.json(await setTripStatus(trip, status));
+  }),
+);
+
+// The driver sets off towards the patient ("Go"): ASSIGNED -> EN_ROUTE. From there the position does the rest.
+tripsRouter.post(
+  '/:id/start',
+  asyncHandler(async (req, res) => {
+    const trip = await prisma.trip.findUnique({ where: { id: req.params.id } });
+    if (!trip) throw new HttpError(404, 'Trip not found');
+    if (req.user!.role === 'DRIVER' && trip.driverId !== req.user!.driverId) throw new HttpError(403, 'Insufficient permissions');
+    if (trip.status === 'ASSIGNED') return res.json(await setTripStatus(trip, 'EN_ROUTE'));
+    if (ACTIVE_STATUSES.includes(trip.status)) {
+      return res.json(await prisma.trip.findUnique({ where: { id: trip.id }, include: tripInclude })); // already under way
     }
-
-    const updated = await prisma.trip.update({
-      where: { id: trip.id },
-      data: { status },
-      include: tripInclude,
-    });
-
-    // Keep driver availability in sync with trip progress.
-    if (trip.driverId) {
-      if (status === 'EN_ROUTE' || status === 'ARRIVED') {
-        await prisma.driver.update({
-          where: { id: trip.driverId },
-          data: { status: 'ON_TRIP' },
-        });
-      } else if (status === 'COMPLETED' || status === 'CANCELLED') {
-        await prisma.driver.update({
-          where: { id: trip.driverId },
-          data: { status: 'AVAILABLE' },
-        });
-      }
-    }
-
-    res.json(updated);
+    throw new HttpError(400, 'لا يمكن بدء هذه الرحلة في حالتها الحالية');
   }),
 );
 
@@ -301,8 +295,6 @@ tripsRouter.get(
     });
   }),
 );
-
-const ACTIVE_STATUSES = ['EN_ROUTE', 'ARRIVED', 'PICKED_UP'];
 
 // Delete a trip for good. Drivers cannot; the web app asks for confirmation first.
 tripsRouter.delete(

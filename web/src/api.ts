@@ -1,4 +1,6 @@
 import type {
+  AlertItem,
+  AlertType,
   AppSettings,
   ArrivalMessage,
   AuthUser,
@@ -114,6 +116,16 @@ export const api = {
       request<{ text: string; unknown: string[] }>('/settings/preview', { method: 'POST', body: JSON.stringify({ template }) }),
   },
 
+  alerts: {
+    create: (body: { type: AlertType; note?: string; lat?: number | null; lng?: number | null }) =>
+      request<AlertItem>('/alerts', { method: 'POST', body: JSON.stringify(body) }),
+    /** Alerts nobody has resolved (default) or everything recent. Coordinators / admins. */
+    list: (all = false) => request<AlertItem[]>(`/alerts${all ? '?status=all' : ''}`),
+    mine: () => request<AlertItem[]>('/alerts/mine'),
+    ack: (id: string) => request<AlertItem>(`/alerts/${id}/ack`, { method: 'PATCH' }),
+    resolve: (id: string) => request<AlertItem>(`/alerts/${id}/resolve`, { method: 'PATCH' }),
+  },
+
   dashboard: () => request<DashboardSummary>('/dashboard/summary'),
 
   users: {
@@ -136,7 +148,7 @@ export const api = {
       id: string,
       p: { lat: number; lng: number; heading?: number | null; speed?: number | null; accuracy?: number | null },
     ) =>
-      request(`/drivers/${id}/location`, {
+      request<{ tripUpdate?: { tripId: string; status: string } | null }>(`/drivers/${id}/location`, {
         method: 'POST',
         body: JSON.stringify(p),
       }),
@@ -191,6 +203,8 @@ export const api = {
     /** Tell the patient the car has arrived: the server sends it (or asks the coordinator to), the number never reaches the caller. */
     notifyPatient: (id: string) =>
       request<{ status: 'sent' | 'requested' | 'already'; at: string }>(`/trips/${id}/notify-patient`, { method: 'POST' }),
+    /** The driver sets off ("Go"): ASSIGNED -> EN_ROUTE. After that the trip follows the driver's position. */
+    start: (id: string) => request<Trip>(`/trips/${id}/start`, { method: 'POST' }),
     markPatientNoticeSent: (id: string) => request<Trip>(`/trips/${id}/patient-notice/sent`, { method: 'POST' }),
     arrivalMessage: (id: string) => request<ArrivalMessage>(`/trips/${id}/arrival-message`),
   },

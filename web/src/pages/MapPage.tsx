@@ -5,7 +5,7 @@ import { api } from '../api';
 import { useMapConfig } from '../config';
 import { useI18n } from '../i18n';
 import { tripStatusKeys } from '../labels';
-import { isOpenTrip, NEXT_ACTION } from '../lib/tripFlow';
+import { isOpenTrip } from '../lib/tripFlow';
 import type { Trip } from '../types';
 import { TripBar } from '../features/map/components/TripBar';
 import { toInputValue } from '../lib/date';
@@ -43,8 +43,8 @@ export interface MapScreenProps {
    * until pick-up, then the destination. Never shows or needs the patient's phone number.
    */
   trip?: Trip | null;
-  /** Move the trip to its next status (driver). */
-  onAdvanceTrip?: (trip: Trip) => Promise<void>;
+  /** The driver sets off ("Go"): the trip goes on the way. Every later status follows the car's position. */
+  onStartTrip?: (trip: Trip) => Promise<void>;
 }
 
 const NO_PARAMS = new URLSearchParams();
@@ -54,11 +54,11 @@ export function MapPage() {
   return <MapScreen />;
 }
 
-export function MapScreen({ className, trip: driverTrip, onAdvanceTrip }: MapScreenProps = {}) {
+export function MapScreen({ className, trip: driverTrip, onStartTrip }: MapScreenProps = {}) {
   const mapConfig = useMapConfig();
   const { t } = useI18n();
   const [urlParams] = useSearchParams();
-  const driverMode = Boolean(onAdvanceTrip);
+  const driverMode = Boolean(onStartTrip);
   // A driver's screen is driven by the trip prop, not by the address bar.
   const searchParams = driverMode ? NO_PARAMS : urlParams;
 
@@ -349,11 +349,8 @@ export function MapScreen({ className, trip: driverTrip, onAdvanceTrip }: MapScr
     flash(ok ? 'تم نسخ رابط المسار' : 'تعذّر النسخ');
   };
 
-  // At arrival: "arrived at the patient" before pick-up, "finish the trip" after; and the driver can tell the
-  // patient the car is here without ever seeing the number (the server sends it).
-  const arrivalNext = driverTrip && (driverTrip.status === 'EN_ROUTE' || driverTrip.status === 'PICKED_UP') ? NEXT_ACTION[driverTrip.status] : undefined;
-  const arrivalAction =
-    driverTrip && onAdvanceTrip && arrivalNext ? { label: arrivalNext.label, run: () => onAdvanceTrip(driverTrip) } : undefined;
+  // At arrival the driver can tell the patient the car is here without ever seeing the number (the server
+  // sends it). The trip's status is not tapped: it follows the car's position.
   const secondaryAction =
     driverTrip && driverMode && driverTrip.status !== 'PICKED_UP'
       ? {
@@ -374,10 +371,24 @@ export function MapScreen({ className, trip: driverTrip, onAdvanceTrip }: MapScr
         ? 'حدّد نقطة الانطلاق والوجهة'
         : routeError;
 
+  // Start navigating. For a driver this is "Go": setting off towards the patient puts the trip on the way.
+  const beginNavigation = async () => {
+    unlockSpeech();
+    if (driverTrip?.status === 'ASSIGNED' && onStartTrip) {
+      try {
+        await onStartTrip(driverTrip);
+      } catch {
+        /* navigation must not be blocked by a failed status update */
+      }
+    }
+    if (route && to.coord) setNav({ route, destination: { label: to.label, coord: to.coord }, mode: travelMode, avoid });
+  };
+
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-2xl bg-slate-900 transition-all ${
-        isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen rounded-none' : (className ?? 'h-[calc(100dvh-10rem)] sm:h-[calc(100vh-6.5rem)]')
+      className={`w-full overflow-hidden bg-slate-900 ${
+        // (not "relative" while full screen: it would override "fixed")
+        isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : `relative rounded-2xl ${className ?? 'h-[calc(100dvh-10rem)] sm:h-[calc(100vh-6.5rem)]'}`
       }`}
     >
       <div ref={gm.divRef} className="z-0 h-full w-full" />
@@ -425,24 +436,13 @@ export function MapScreen({ className, trip: driverTrip, onAdvanceTrip }: MapScr
             departPast={departPast}
             canStart={canStart}
             startHint={startHint}
-            onStart={async () => {
-              unlockSpeech();
-              // Starting the drive to the patient puts the trip "on the way", as the driver would by hand.
-              if (driverTrip?.status === 'ASSIGNED' && onAdvanceTrip) {
-                try {
-                  await onAdvanceTrip(driverTrip);
-                } catch {
-                  /* navigation must not be blocked by a failed status update */
-                }
-              }
-              if (route && to.coord) setNav({ route, destination: { label: to.label, coord: to.coord }, mode: travelMode, avoid });
-            }}
+            onStart={beginNavigation}
             onShare={shareRoute}
             onBack={() => setView('explore')}
             trip={trip}
             tripSlot={
-              driverTrip && onAdvanceTrip && isOpenTrip(driverTrip.status) ? (
-                <TripBar trip={driverTrip} onAdvance={onAdvanceTrip} statusLabel={t(tripStatusKeys[driverTrip.status])} />
+              driverTrip && driverMode && isOpenTrip(driverTrip.status) ? (
+                <TripBar trip={driverTrip} onGo={beginNavigation} canGo={canStart} statusLabel={t(tripStatusKeys[driverTrip.status])} />
               ) : undefined
             }
           />
@@ -489,7 +489,6 @@ export function MapScreen({ className, trip: driverTrip, onAdvanceTrip }: MapScr
           mode={nav.mode}
           route={nav.route}
           avoid={nav.avoid}
-          arrivalAction={arrivalAction}
           secondaryAction={secondaryAction}
           onExit={() => setNav(null)}
         />

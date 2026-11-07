@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import type { TrackingDriver } from '../../types';
 import { useI18n } from '../../i18n';
 import { createHtmlMarker, escapeHtml, type HtmlMarker } from '../map/googleMaps';
 import { useGoogleMap, useMapLayers } from '../map/useGoogleMap';
 import { FRESHNESS_COLOR, freshnessOf } from './freshness';
+import { plateLetters } from './plate';
 
 interface TrackingMapProps {
   drivers: TrackingDriver[];
@@ -18,29 +19,51 @@ interface TrackingMapProps {
   className?: string;
 }
 
+export interface TrackingMapHandle {
+  zoomBy: (delta: number) => void;
+}
+
 const GLIDE_MS = 2800; // a marker slides to its new position over (a bit less than) the poll interval
 
-function pinHtml(d: TrackingDriver, selected: boolean): string {
+/**
+ * A car seen from above, pointing where it is heading, with just the letters of its plate under it
+ * (e.g. MPV): enough to tell the cars apart. The driver's name is in the list and on selection.
+ */
+function carHtml(d: TrackingDriver, selected: boolean): string {
   const level = freshnessOf(d.ageSeconds);
   const color = FRESHNESS_COLOR[level];
-  const speed = level === 'live' && d.speedKmh != null && d.speedKmh >= 3 ? ` • ${Math.round(d.speedKmh)} كم/س` : '';
-  const arrow =
-    level === 'live' && d.heading != null
-      ? `<svg width="14" height="14" viewBox="0 0 24 24" style="transform:rotate(${d.heading}deg);flex:none"><path d="M12 2 20 21l-8-4-8 4Z" fill="#fff"/></svg>`
-      : `<span style="width:8px;height:8px;border-radius:50%;background:#fff;flex:none"></span>`;
-  return `<div style="display:flex;flex-direction:column;align-items:center">
-    <div style="display:flex;align-items:center;gap:6px;background:${color};color:#fff;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;border:2px solid ${selected ? '#1d4ed8' : '#fff'};box-shadow:0 3px 10px rgba(0,0,0,.4);${level === 'live' ? 'animation:drvPulse 2s infinite' : 'opacity:.9'}">
-      ${arrow}<span>${escapeHtml(d.name)}${speed}</span>
-    </div>
-    <div style="width:2px;height:10px;background:${color}"></div></div>`;
+  const letters = escapeHtml(plateLetters(d.vehicle?.plate, d.name));
+  const heading = level === 'live' || level === 'recent' ? (d.heading ?? 0) : 0;
+  const ring = selected
+    ? '<div style="position:absolute;inset:-9px;border-radius:50%;border:3px solid #2563eb;background:rgba(37,99,235,.12)"></div>'
+    : level === 'live'
+      ? '<div style="position:absolute;inset:-4px;border-radius:50%;animation:drvPulse 2s infinite"></div>'
+      : '';
+  return `<div style="position:relative;width:28px;height:46px;opacity:${level === 'stale' || level === 'none' ? 0.8 : 1}">
+    ${ring}
+    <svg viewBox="0 0 28 46" width="28" height="46" style="position:relative;transform:rotate(${heading}deg);transition:transform .6s linear;filter:drop-shadow(0 2px 3px rgba(0,0,0,.55))">
+      <rect x="1" y="9" width="4" height="9" rx="1.5" fill="#1f2937"/><rect x="23" y="9" width="4" height="9" rx="1.5" fill="#1f2937"/>
+      <rect x="1" y="29" width="4" height="9" rx="1.5" fill="#1f2937"/><rect x="23" y="29" width="4" height="9" rx="1.5" fill="#1f2937"/>
+      <rect x="3.5" y="2" width="21" height="42" rx="9" fill="${color}" stroke="#fff" stroke-width="2"/>
+      <path d="M7 14Q14 9 21 14L19.5 20H8.5Z" fill="#dbeafe"/>
+      <rect x="8.5" y="22" width="11" height="9" rx="2" fill="${color}" stroke="#fff" stroke-opacity=".55"/>
+      <path d="M8.5 33H19.5L21 37Q14 40 7 37Z" fill="#dbeafe"/>
+      <circle cx="8.5" cy="4.6" r="1.6" fill="#fde047"/><circle cx="19.5" cy="4.6" r="1.6" fill="#fde047"/>
+    </svg>
+    <div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;background:#0f172a;color:#fff;border:2px solid ${selected ? '#2563eb' : color};border-radius:8px;padding:1px 7px;font:800 12px/16px system-ui,sans-serif;letter-spacing:.5px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.45)">${letters}</div>
+  </div>`;
 }
 
 /** Live map of the drivers: one persistent marker each, gliding to every new position. */
-export function TrackingMap({ drivers, selectedId, followId, onSelect, fitSignal, traffic, className }: TrackingMapProps) {
+export const TrackingMap = forwardRef<TrackingMapHandle, TrackingMapProps>(function TrackingMap(
+  { drivers, selectedId, followId, onSelect, fitSignal, traffic, className },
+  handle,
+) {
   const { dir } = useI18n();
-  const gm = useGoogleMap();
+  const gm = useGoogleMap({ disableDefaultUI: true });
   const { mapRef, gRef, ready } = gm;
   useMapLayers(gm, { traffic });
+  useImperativeHandle(handle, () => ({ zoomBy: (d) => gm.mapRef.current?.setZoom((gm.mapRef.current.getZoom() ?? 12) + d) }), [gm.mapRef]);
   const markers = useRef(new Map<string, { marker: HtmlMarker; html: string; lat: number; lng: number }>());
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
@@ -63,10 +86,10 @@ export function TrackingMap({ drivers, selectedId, followId, onSelect, fitSignal
     for (const d of drivers) {
       if (d.lat == null || d.lng == null) continue;
       seen.add(d.id);
-      const html = pinHtml(d, d.id === selectedId);
+      const html = carHtml(d, d.id === selectedId);
       const cur = markers.current.get(d.id);
       if (!cur) {
-        const marker = createHtmlMarker(g, { lat: d.lat, lng: d.lng }, html, () => onSelectRef.current(d.id));
+        const marker = createHtmlMarker(g, { lat: d.lat, lng: d.lng }, html, () => onSelectRef.current(d.id), 'center');
         marker.setMap(map);
         markers.current.set(d.id, { marker, html, lat: d.lat, lng: d.lng });
         continue;
@@ -143,10 +166,10 @@ export function TrackingMap({ drivers, selectedId, followId, onSelect, fitSignal
 
   if (gm.keyMissing || gm.error) {
     return (
-      <div className={`flex items-center justify-center rounded-2xl border border-dashed border-border bg-surface2 p-6 text-center text-sm text-muted ${className ?? ''}`}>
+      <div className={`flex items-center justify-center bg-surface2 p-6 text-center text-sm text-muted ${className ?? ''}`}>
         {gm.error ? `تعذّر تحميل الخريطة: ${gm.error}` : 'خريطة Google غير مفعّلة بعد'}
       </div>
     );
   }
-  return <div ref={gm.divRef} className={`overflow-hidden rounded-2xl border border-border ${className ?? ''}`} data-testid="tracking-map" />;
-}
+  return <div ref={gm.divRef} className={className} data-testid="tracking-map" />;
+});
