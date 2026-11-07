@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../../api';
 import { haversine } from '../map/routeNav';
 
-export type SharingState = 'off' | 'starting' | 'live' | 'denied' | 'unavailable';
+export type SharingState = 'off' | 'starting' | 'live' | 'denied' | 'unavailable' | 'error';
 
 const MIN_GAP_MS = 4000; // moving: at most one report every 4 s
 const HEARTBEAT_MS = 15000; // standing still: still report this often, so the driver stays "live" (a stationary phone emits no new fixes)
@@ -60,7 +60,9 @@ export function useLocationSharing(driverId: string | null | undefined, onTripUp
           setState('live');
         }
       } catch {
-        /* offline or server busy: the next tick tries again (last.current is not advanced) */
+        // Offline or the server refused it: the next tick tries again (last.current is not advanced).
+        // Say so: a phone that "looks fine" while nothing reaches the clinic is the worst case.
+        if (alive) setState('error');
       } finally {
         inFlight.current = false;
       }

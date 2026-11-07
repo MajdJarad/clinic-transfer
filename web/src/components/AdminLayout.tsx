@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+import { EphemeralNotice } from './EphemeralNotice';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { useClinicName } from '../config';
@@ -150,7 +151,10 @@ function LayoutInner({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6">
+          <EphemeralNotice />
+          {children}
+        </main>
       </div>
     </div>
   );

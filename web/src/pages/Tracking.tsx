@@ -28,7 +28,7 @@ export function Tracking() {
   const [followId, setFollowId] = useState<string | null>(null);
   const [fitSignal, setFitSignal] = useState(0);
   const [traffic, setTraffic] = useState(false);
-  const [showStale, setShowStale] = useState(false); // last known points of drivers who went quiet
+  const [hideQuiet, setHideQuiet] = useState(false); // drivers who stopped reporting stay on the map, grey, with their age
   const [panelOpen, setPanelOpen] = useState(() => window.innerWidth >= 768);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const focused = useRef(false);
@@ -68,7 +68,7 @@ export function Tracking() {
     const target = drivers.find((d) => d.id === want && d.lat != null && d.lng != null);
     if (target) {
       focused.current = true;
-      if (!isCurrent(target)) setShowStale(true); // an alert from a driver who went quiet: show where he was last heard
+      setHideQuiet(false); // an alert from a driver who went quiet: show where he was last heard
       setSelectedId(want);
       setFollowId(want);
     }
@@ -83,10 +83,11 @@ export function Tracking() {
     () => [...view].sort((a, b) => RANK[freshnessOf(a.ageSeconds)] - RANK[freshnessOf(b.ageSeconds)] || a.name.localeCompare(b.name)),
     [view],
   );
-  // Only current positions are drawn (a driver who has gone quiet is not "parked" where he was last heard).
+  // Real positions only: current ones in colour; a driver who stopped reporting stays where he was last heard,
+  // drawn grey and labelled with how long ago (positions older than 12 h are not returned by the server).
   const mapDrivers = useMemo(
-    () => view.filter((d) => (showStale ? d.lat != null && d.lng != null : isCurrent(d))),
-    [view, showStale],
+    () => view.filter((d) => d.lat != null && d.lng != null && (!hideQuiet || isCurrent(d))),
+    [view, hideQuiet],
   );
   const staleCount = useMemo(() => view.filter((d) => d.lat != null && d.lng != null && !isCurrent(d)).length, [view]);
   const counts = useMemo(() => {
@@ -154,8 +155,8 @@ export function Tracking() {
           🚦 المرور
         </button>
         {staleCount > 0 && (
-          <button type="button" onClick={() => setShowStale((v) => !v)} className={`${btn} ${showStale ? '!bg-slate-600 !text-white' : ''}`} data-testid="toggle-stale">
-            🕘 آخر المواقع المعروفة ({staleCount})
+          <button type="button" onClick={() => setHideQuiet((v) => !v)} className={`${btn} ${hideQuiet ? '!bg-slate-600 !text-white' : ''}`} data-testid="toggle-stale">
+            {hideQuiet ? `🕘 إظهار المتوقفين (${staleCount})` : `🕘 إخفاء المتوقفين (${staleCount})`}
           </button>
         )}
         <button type="button" onClick={() => setIsFullscreen((v) => !v)} className={btn} data-testid="tracking-fullscreen">
@@ -183,7 +184,7 @@ export function Tracking() {
             sorted.map((d) => {
               const level = freshnessOf(d.ageSeconds);
               const located = d.lat != null && d.lng != null;
-              const onMap = located && (showStale || isCurrent(d)); // is his car actually drawn?
+              const onMap = located && (!hideQuiet || isCurrent(d)); // is his car actually drawn?
               const onTrip = d.activeTrip;
               return (
                 <div
@@ -214,7 +215,7 @@ export function Tracking() {
                   )}
                   {located && !isCurrent(d) && (
                     <p className="mt-0.5 text-[11px] font-semibold text-muted" data-testid={`driver-stale-${d.id}`}>
-                      {showStale ? '🕘 آخر موقع معروف (قديم)' : '🕘 آخر موقع معروف — غير ظاهر على الخريطة لأنه قديم'}
+                      {hideQuiet ? '🕘 توقف عن الإرسال — مخفي من الخريطة' : '🕘 توقف عن الإرسال — آخر موقع معروف (رمادي على الخريطة)'}
                     </p>
                   )}
                   {located && (

@@ -7,7 +7,7 @@ import { LanguageSelect, ThemeToggle } from '../components/Controls';
 import { Button, ErrorText, Field, Input } from '../components/ui';
 
 export function Login() {
-  const { login } = useAuth();
+  const { login, expired } = useAuth();
   const { t } = useI18n();
   const clinicName = useClinicName();
   const navigate = useNavigate();
@@ -45,6 +45,11 @@ export function Login() {
           <p className="text-sm text-muted">{clinicName || t('common.clinic')}</p>
         </div>
         <form onSubmit={submit} className="space-y-4">
+          {expired && (
+            <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs font-semibold text-amber-700 dark:text-amber-300" data-testid="session-expired">
+              انتهت جلستك أو لم يعد حسابك موجوداً على الخادم (قد تكون البيانات أُعيدت إلى الوضع الأصلي). سجّل الدخول من جديد.
+            </p>
+          )}
           <ErrorText>{error}</ErrorText>
           <Field label={t('login.email')}>
             <Input

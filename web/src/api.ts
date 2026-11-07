@@ -58,13 +58,29 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (res.status === 204) return undefined as T;
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    if (res.status === 401) clearSession();
+    if (res.status === 401 && token) {
+      // The session no longer matches an account in the database (or expired): sign out everywhere in the app.
+      clearSession();
+      window.dispatchEvent(new Event('auth:expired'));
+    }
     throw new ApiError(res.status, (body as { error?: string }).error ?? 'Request failed');
   }
   return body as T;
 }
 
+export interface HealthInfo {
+  ok: boolean;
+  webBuild?: string | null;
+  startedAt?: string;
+  uptimeSeconds?: number;
+  /** false: the database is inside the container and returns to the demo data on every deploy/restart. */
+  databasePersistent?: boolean;
+}
+
 export const api = {
+  /** The signed-in account as the DATABASE sees it now (role, driver link). */
+  me: () => request<AuthUser>('/auth/me'),
+  health: () => fetch('/api/health', { cache: 'no-store' }).then((r) => (r.ok ? (r.json() as Promise<HealthInfo>) : null)).catch(() => null),
   login: (email: string, password: string) =>
     request<{ token: string; user: AuthUser }>('/auth/login', {
       method: 'POST',
