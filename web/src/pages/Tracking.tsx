@@ -1,81 +1,194 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import { useI18n } from '../i18n';
-import { useMapConfig } from '../config';
-import { MapView, type MapPoint } from '../features/map/MapView';
-import { Card, EmptyState, PageHeader, SectionTitle, StatusPill } from '../components/ui';
+import { Card, EmptyState, PageHeader, StatusPill } from '../components/ui';
 import { driverStatusKeys } from '../labels';
+import { ageLabel, FRESHNESS_COLOR, freshnessOf, type Freshness } from '../features/tracking/freshness';
+import { TrackingMap } from '../features/tracking/TrackingMap';
 import type { TrackingDriver } from '../types';
 
+const POLL_MS = 3000; // phones report every few seconds; the screen asks as often
+
+const RANK: Record<Freshness, number> = { live: 0, recent: 1, stale: 2, none: 3 };
+const LEVEL_TEXT: Record<Freshness, string> = { live: 'مباشر', recent: 'حديث', stale: 'غير متصل', none: 'بلا موقع' };
+
+/** Live tracking: where every driver's phone is right now. */
 export function Tracking() {
   const { t } = useI18n();
-  const mapConfig = useMapConfig();
   const [drivers, setDrivers] = useState<TrackingDriver[]>([]);
+  const [fetchedAt, setFetchedAt] = useState(Date.now());
+  const [now, setNow] = useState(Date.now());
+  const [loaded, setLoaded] = useState(false);
+  const [offline, setOffline] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [followId, setFollowId] = useState<string | null>(null);
+  const [fitSignal, setFitSignal] = useState(0);
+  const [traffic, setTraffic] = useState(false);
 
+  // Ask for fresh positions every few seconds (not while the tab is hidden), and at once on return.
   useEffect(() => {
-    let active = true;
-    const tick = () => api.drivers.live().then((d) => active && setDrivers(d)).catch(() => {});
-    tick();
-    const id = setInterval(tick, 8000);
+    let alive = true;
+    const pull = () => {
+      if (document.visibilityState === 'hidden') return;
+      api.drivers
+        .live()
+        .then((d) => {
+          if (!alive) return;
+          setDrivers(d);
+          setFetchedAt(Date.now());
+          setLoaded(true);
+          setOffline(false);
+        })
+        .catch(() => alive && setOffline(true));
+    };
+    pull();
+    const id = setInterval(pull, POLL_MS);
+    document.addEventListener('visibilitychange', pull);
+    const tick = setInterval(() => setNow(Date.now()), 1000);
     return () => {
-      active = false;
+      alive = false;
       clearInterval(id);
+      clearInterval(tick);
+      document.removeEventListener('visibilitychange', pull);
     };
   }, []);
 
-  const points = useMemo<MapPoint[]>(
-    () =>
-      drivers
-        .filter((d) => d.lat != null && d.lng != null)
-        .map((d) => ({
-          id: d.id,
-          lat: d.lat as number,
-          lng: d.lng as number,
-          title: d.name,
-          subtitle: d.vehicle ? `${d.vehicle.make} ${d.vehicle.model} - ${d.vehicle.plate}` : undefined,
-        })),
-    [drivers],
+  // The server sent how old each position was at that moment; keep counting between polls.
+  const view = useMemo(
+    () => drivers.map((d) => ({ ...d, ageSeconds: d.ageSeconds == null ? null : d.ageSeconds + Math.max(0, (now - fetchedAt) / 1000) })),
+    [drivers, now, fetchedAt],
   );
+  const sorted = useMemo(
+    () => [...view].sort((a, b) => RANK[freshnessOf(a.ageSeconds)] - RANK[freshnessOf(b.ageSeconds)] || a.name.localeCompare(b.name)),
+    [view],
+  );
+  const counts = useMemo(() => {
+    const c: Record<Freshness, number> = { live: 0, recent: 0, stale: 0, none: 0 };
+    view.forEach((d) => c[freshnessOf(d.ageSeconds)]++);
+    return c;
+  }, [view]);
 
   return (
-    <div className="space-y-5">
-      <PageHeader title={t('tracking.title')} subtitle={t('tracking.subtitle')} />
+    <div className="space-y-4">
+      <PageHeader title={t('tracking.title')} subtitle="مواقع هواتف السائقين تصل مباشرة وتتحدث كل ثوانٍ" />
 
-      <Card className="p-4">
-        <MapView
-          points={points}
-          height={420}
-          center={mapConfig.defaultCenter}
-          zoom={mapConfig.defaultZoom}
-        />
-      </Card>
+      <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="tracking-summary">
+        {(['live', 'recent', 'stale', 'none'] as Freshness[]).map((k) => (
+          <span key={k} className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 font-semibold text-fg">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: FRESHNESS_COLOR[k] }} />
+            {LEVEL_TEXT[k]} <b data-testid={`count-${k}`}>{counts[k]}</b>
+          </span>
+        ))}
+        <span className={`ms-auto rounded-full px-3 py-1 font-semibold ${offline ? 'bg-red-500/10 text-red-600' : 'text-muted'}`} data-testid="tracking-status">
+          {offline ? '⚠️ انقطع الاتصال بالخادم… نحاول مجدداً' : loaded ? `آخر تحديث ${new Date(fetchedAt).toLocaleTimeString('en-GB')}` : 'جارٍ التحميل…'}
+        </span>
+      </div>
 
-      <Card className="p-4">
-        <SectionTitle>{t('tracking.onMap')}</SectionTitle>
-        {drivers.length === 0 ? (
-          <EmptyState text={t('tracking.noLocations')} />
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {drivers.map((d) => (
-              <div key={d.id} className="rounded-xl border border-border p-3">
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="font-medium text-fg">{d.name}</span>
-                  <StatusPill status={d.status} label={t(driverStatusKeys[d.status])} />
-                </div>
-                <p className="text-xs text-muted">
-                  {d.vehicle ? `${d.vehicle.make} ${d.vehicle.model} - ${d.vehicle.plate}` : t('tracking.noVehicle')}
-                </p>
-                <p className="mt-1 text-xs text-muted" dir="ltr">
-                  {d.lat?.toFixed(4)}, {d.lng?.toFixed(4)}
-                </p>
-                <p className="mt-1 text-[11px] text-muted">
-                  {t('tracking.source')}: {d.source === 'traccar' ? t('tracking.sourceTraccar') : t('tracking.sourcePhone')}
-                </p>
-              </div>
-            ))}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="relative lg:col-span-2">
+          <TrackingMap
+            drivers={view}
+            selectedId={selectedId}
+            followId={followId}
+            onSelect={(id) => {
+              setSelectedId(id);
+              setFollowId(null);
+            }}
+            fitSignal={fitSignal}
+            traffic={traffic}
+            className="h-[55vh] min-h-[320px] lg:h-[68vh]"
+          />
+          <div className="absolute end-3 top-3 z-10 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedId(null);
+                setFollowId(null);
+                setFitSignal((n) => n + 1);
+              }}
+              className="rounded-lg border border-border bg-surface/95 px-3 py-1.5 text-xs font-semibold text-fg shadow-lg"
+              data-testid="fit-all"
+            >
+              🎯 عرض الكل
+            </button>
+            <button
+              type="button"
+              onClick={() => setTraffic((v) => !v)}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-lg ${traffic ? 'border-amber-600 bg-amber-600 text-white' : 'border-border bg-surface/95 text-fg'}`}
+            >
+              🚦 المرور
+            </button>
           </div>
-        )}
-      </Card>
+        </div>
+
+        <Card className="max-h-[68vh] space-y-2 overflow-y-auto p-3" data-testid="driver-list">
+          {sorted.length === 0 ? (
+            <EmptyState text={loaded ? t('tracking.noLocations') : 'جارٍ التحميل…'} />
+          ) : (
+            sorted.map((d) => {
+              const level = freshnessOf(d.ageSeconds);
+              const located = d.lat != null && d.lng != null;
+              const onTrip = d.activeTrip;
+              return (
+                <div
+                  key={d.id}
+                  data-testid={`driver-row-${d.id}`}
+                  onClick={() => located && (setSelectedId(d.id), setFollowId(null))}
+                  className={`cursor-pointer rounded-xl border p-2.5 transition ${selectedId === d.id ? 'border-blue-500 bg-blue-500/5' : 'border-border hover:border-blue-300'}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="flex min-w-0 items-center gap-2 text-sm font-bold text-fg">
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: FRESHNESS_COLOR[level] }} />
+                      <span className="truncate">{d.name}</span>
+                    </span>
+                    <StatusPill status={d.status} label={t(driverStatusKeys[d.status])} />
+                  </div>
+                  <p className="mt-1 truncate text-[11px] text-muted">
+                    {d.vehicle ? `${d.vehicle.make} ${d.vehicle.model} • ${d.vehicle.plate}` : t('tracking.noVehicle')}
+                  </p>
+                  <p className="mt-1 text-[11px] font-semibold" style={{ color: FRESHNESS_COLOR[level] }} data-testid={`driver-age-${d.id}`}>
+                    {LEVEL_TEXT[level]} • {ageLabel(d.ageSeconds)}
+                    {level === 'live' && d.speedKmh != null && d.speedKmh >= 1 ? ` • ${Math.round(d.speedKmh)} كم/س` : ''}
+                  </p>
+                  {located && (
+                    <p className="mt-0.5 text-[10px] text-muted" dir="ltr" data-testid={`driver-pos-${d.id}`}>
+                      {(d.lat as number).toFixed(5)}, {(d.lng as number).toFixed(5)}
+                      {d.accuracy != null ? `  ±${Math.round(d.accuracy)}m` : ''}
+                    </p>
+                  )}
+                  {onTrip && (
+                    <p className="mt-1 truncate rounded-lg bg-surface2 px-2 py-1 text-[11px] font-semibold text-fg" data-testid={`driver-trip-${d.id}`}>
+                      {onTrip.status === 'PICKED_UP' ? '🏥 إلى الوجهة' : '🧑‍⚕️ إلى المريض'} • {onTrip.patientName}
+                    </p>
+                  )}
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={!located}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedId(d.id);
+                        setFollowId(followId === d.id ? null : d.id);
+                      }}
+                      className={`flex-1 rounded-lg border px-2 py-1 text-[11px] font-bold disabled:opacity-40 ${
+                        followId === d.id ? 'border-blue-600 bg-blue-600 text-white' : 'border-border bg-surface2 text-fg'
+                      }`}
+                      data-testid={`follow-${d.id}`}
+                    >
+                      {followId === d.id ? '👁️ يتم التتبع' : '👁️ تتبّع'}
+                    </button>
+                    {d.phone && (
+                      <a href={`tel:${d.phone}`} onClick={(e) => e.stopPropagation()} className="rounded-lg border border-border bg-surface2 px-3 py-1 text-[11px] font-bold text-fg">
+                        📞
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

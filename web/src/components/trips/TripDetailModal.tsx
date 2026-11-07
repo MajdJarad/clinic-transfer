@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ConfirmDialog } from '../ConfirmDialog';
 import type { Trip, TripStatus } from '../../types';
 import { useI18n } from '../../i18n';
 import { tripStatusKeys, tripTypeKeys } from '../../labels';
@@ -16,6 +18,8 @@ interface TripDetailModalProps {
   onStatus?: (trip: Trip, status: TripStatus) => void;
   onCancel?: (trip: Trip) => void;
   onNavigate?: (trip: Trip) => void;
+  /** Permanently delete the trip. Only passed to roles allowed to (never drivers); asks to confirm first. */
+  onDelete?: (trip: Trip) => Promise<void> | void;
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -27,8 +31,11 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export function TripDetailModal({ trip, onClose, onEdit, onAssign, onWhatsApp, onStatus, onCancel, onNavigate }: TripDetailModalProps) {
+export function TripDetailModal({ trip, onClose, onEdit, onAssign, onWhatsApp, onStatus, onCancel, onNavigate, onDelete }: TripDetailModalProps) {
   const { t, intl } = useI18n();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const navigate = useNavigate();
 
   const startNavigation = (tr: Trip) => {
@@ -45,7 +52,7 @@ export function TripDetailModal({ trip, onClose, onEdit, onAssign, onWhatsApp, o
     if (tr.destLat) params.set('destLat', String(tr.destLat));
     if (tr.destLng) params.set('destLng', String(tr.destLng));
     params.set('patient', tr.patientName);
-    if (tr.patientPhone) params.set('phone', tr.patientPhone);
+    if (tr.patientPhone) params.set('phone', tr.patientPhone); // empty for drivers, who never get the number
     if (tr.driver?.user.name) params.set('driver', tr.driver.user.name);
     params.set('tripId', tr.id);
     params.set('depart', tr.scheduledAt); // traffic is estimated for the trip's own time
@@ -78,7 +85,7 @@ export function TripDetailModal({ trip, onClose, onEdit, onAssign, onWhatsApp, o
             />
             <Row label={t('tripDetail.from')} value={trip.origin} />
             <Row label={t('tripDetail.to')} value={trip.destination} />
-            <Row label={t('tripDetail.patientPhone')} value={<span dir="ltr">{trip.patientPhone}</span>} />
+            {trip.patientPhone ? <Row label={t('tripDetail.patientPhone')} value={<span dir="ltr">{trip.patientPhone}</span>} /> : null}
             <Row
               label={t('tripDetail.driver')}
               value={trip.driver ? trip.driver.user.name : <span className="text-amber-500">{t('calendar.unassigned')}</span>}
@@ -132,7 +139,51 @@ export function TripDetailModal({ trip, onClose, onEdit, onAssign, onWhatsApp, o
                 {t('tripDetail.cancel')}
               </Button>
             )}
+            {onDelete && (
+              <Button size="sm" variant="danger" onClick={() => setConfirmDelete(true)} data-testid="trip-delete">
+                🗑️ حذف
+              </Button>
+            )}
           </div>
+          {trip.patientNoticeRequestedAt && !trip.patientNoticeSentAt && onWhatsApp && (
+            <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs font-semibold text-amber-700 dark:text-amber-300" data-testid="notice-requested">
+              🔔 طلب السائق إبلاغ المريض بوصول السيارة. افتح واتساب لإرسال الرسالة.
+            </p>
+          )}
+          {deleteError && <p className="text-xs font-semibold text-red-600">{deleteError}</p>}
+
+          <ConfirmDialog
+            open={confirmDelete}
+            title="حذف الرحلة"
+            message={
+              <>
+                <p>
+                  هل أنت متأكد من حذف رحلة المريض <strong>{trip.patientName}</strong>؟
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  {trip.origin} ← {trip.destination}
+                </p>
+                <p className="mt-2 font-semibold text-red-600">سيتم حذفها نهائياً ولا يمكن التراجع عن ذلك.</p>
+              </>
+            }
+            confirmLabel="نعم، احذف الرحلة"
+            busy={deleting}
+            onCancel={() => setConfirmDelete(false)}
+            onConfirm={async () => {
+              if (!onDelete) return;
+              setDeleting(true);
+              setDeleteError('');
+              try {
+                await onDelete(trip);
+                setConfirmDelete(false);
+              } catch (e) {
+                setConfirmDelete(false);
+                setDeleteError(e instanceof Error ? e.message : 'تعذّر حذف الرحلة');
+              } finally {
+                setDeleting(false);
+              }
+            }}
+          />
         </div>
       )}
     </Modal>

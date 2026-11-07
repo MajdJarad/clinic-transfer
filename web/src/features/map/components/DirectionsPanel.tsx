@@ -29,6 +29,8 @@ interface DirectionsPanelProps {
   onShare: () => void;
   onBack: () => void;
   trip?: { patientName: string; patientPhone: string; driverName: string };
+  /** Extra content for the driver's trip (leg, status, actions), shown above the waypoints. */
+  tripSlot?: React.ReactNode;
 }
 
 const nowLocalMin = () => {
@@ -112,6 +114,8 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
         </div>
       ) : (
         <>
+          {p.tripSlot && <div className="mt-2.5">{p.tripSlot}</div>}
+
           {/* Waypoints */}
           <div className="relative mt-2.5 space-y-1.5">
             <PlaceInput

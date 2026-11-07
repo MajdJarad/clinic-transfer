@@ -1,15 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
-import { useMapConfig } from '../config';
-import { MapView, type MapPoint } from '../features/map/MapView';
-import { NavigationScreen, unlockSpeech, type NavTarget } from '../features/map/NavigationScreen';
-import { PlaceInput } from '../features/map/PlaceInput';
-import { formatDistance, formatDuration, type RouteData } from '../features/map/routeNav';
-import { NO_AVOID, useRoutes } from '../features/map/useRoutes';
-import { useWaypoints } from '../features/map/useWaypoints';
-import { WhatsAppModal } from '../components/WhatsAppModal';
+import { useLocationSharing } from '../features/tracking/useLocationSharing';
+import { NEXT_ACTION } from '../lib/tripFlow';
+import { MapScreen } from './MapPage';
 import { ThemeToggle } from '../components/Controls';
 import {
   Button,
@@ -20,13 +15,12 @@ import {
   Input,
   Modal,
   Select,
-  StatusPill,
   Textarea,
 } from '../components/ui';
 import { MonthView } from '../components/calendar/MonthView';
 import { TimeGridView } from '../components/calendar/TimeGridView';
 import { TripDetailModal } from '../components/trips/TripDetailModal';
-import { driverStatusKeys, tripStatusKeys } from '../labels';
+import { driverStatusKeys } from '../labels';
 import {
   addDays,
   addMonths,
@@ -40,19 +34,11 @@ import type { Driver, Maintenance, Trip, TripStatus } from '../types';
 type DriverTab = 'calendar' | 'navigation' | 'maintenance';
 type ViewMode = 'day' | 'week' | 'month';
 
-const NEXT_ACTION: Partial<Record<TripStatus, { label: string; status: TripStatus; variant: 'primary' | 'success' | 'secondary' }>> = {
-  ASSIGNED: { label: 'انطلاق في الطريق 🚗', status: 'EN_ROUTE', variant: 'primary' },
-  EN_ROUTE: { label: 'وصلت إلى الموقع 📍', status: 'ARRIVED', variant: 'primary' },
-  ARRIVED: { label: 'صعد المريض 👤', status: 'PICKED_UP', variant: 'success' },
-  PICKED_UP: { label: 'إنهاء الرحلة بنجاح ✓', status: 'COMPLETED', variant: 'success' },
-};
-
 const ACTIVE_STATUSES: TripStatus[] = ['ASSIGNED', 'EN_ROUTE', 'ARRIVED', 'PICKED_UP'];
 
 export function DriverApp() {
   const { user, logout } = useAuth();
   const { t, intl } = useI18n();
-  const mapConfig = useMapConfig();
   const driverId = user?.driverId ?? '';
 
   // Active Tab
@@ -64,7 +50,6 @@ export function DriverApp() {
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const selectedRef = useRef<Trip | null>(null);
   selectedRef.current = selectedTrip;
-  const [waTrip, setWaTrip] = useState<Trip | null>(null);
 
   // ─── Google Calendar State (Exact as Admin/Coordinator) ───
   const [calView, setCalView] = useState<ViewMode>('day');
@@ -72,23 +57,25 @@ export function DriverApp() {
   const [calDetailTrip, setCalDetailTrip] = useState<Trip | null>(null);
   const [calQuery, setCalQuery] = useState('');
 
-  // ─── Google Maps Navigation State (Fully Editable Waypoints) ───
-  const wp = useWaypoints({ label: '', coord: null }, { label: '', coord: null });
-  const { from, to, fromDirty, toDirty } = wp;
-  const [travelMode, setTravelMode] = useState<'driving' | 'walking'>('driving');
-  const [selRoute, setSelRoute] = useState(0);
-  // A running navigation is a snapshot: it must not change or vanish when the planning data behind it does
-  // (e.g. the start point refreshes after the trip status changes).
-  const [nav, setNav] = useState<{ route: RouteData; destination: NavTarget; mode: 'driving' | 'walking' } | null>(null);
-  const {
-    routes,
-    loading: calculatingRoute,
-    error: routeError,
-    retryable,
-    retry: retryRoute,
-  } = useRoutes(from.coord, to.coord, { mode: travelMode, ...NO_AVOID });
-  const navRoute = routes[selRoute] ?? null; // the chosen route, with its turn-by-turn steps
-  useEffect(() => setSelRoute(0), [routes]);
+  // The phone shares its position with the clinic by itself while this app is open (the driver can pause it).
+  const share = useLocationSharing(driverId);
+
+  // The map tab fills the whole screen between the header and the bottom bar.
+  const headerRef = useRef<HTMLElement>(null);
+  const navBarRef = useRef<HTMLElement>(null);
+  const [chrome, setChrome] = useState(0);
+  useLayoutEffect(() => {
+    const measure = () => setChrome((headerRef.current?.offsetHeight ?? 0) + (navBarRef.current?.offsetHeight ?? 0));
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (headerRef.current) ro.observe(headerRef.current);
+    if (navBarRef.current) ro.observe(navBarRef.current);
+    window.addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, []);
 
   // ─── Maintenance State ───
   const [maintenanceRecords, setMaintenanceRecords] = useState<Maintenance[]>([]);
@@ -101,11 +88,6 @@ export function DriverApp() {
     odometer: '',
   });
   const [reportError, setReportError] = useState('');
-
-  // ─── Location & Sharing State ───
-  const [sharing, setSharing] = useState(false);
-  const [locMsg, setLocMsg] = useState('');
-  const watchRef = useRef<number | null>(null);
 
   // Load Driver Data
   const loadDriver = useCallback(() => {
@@ -123,7 +105,6 @@ export function DriverApp() {
       } else if (data.length > 0) {
         const current = data.find((tr) => ACTIVE_STATUSES.includes(tr.status)) ?? data[0];
         setSelectedTrip(current);
-        loadTripIntoNav(current);
       }
     }).catch(() => {});
   }, [driverId]);
@@ -178,89 +159,18 @@ export function DriverApp() {
       if (!q) return true;
       return (
         t.patientName.toLowerCase().includes(q) ||
-        t.patientPhone.toLowerCase().includes(q) ||
         t.origin.toLowerCase().includes(q) ||
         t.destination.toLowerCase().includes(q)
       );
     });
   }, [trips, calQuery]);
 
-  // ─── Navigating a trip ───
-  // Navigation always starts from where the driver really is (GPS). The target depends on the stage of
-  // the trip: before the patient is on board it is the pick-up point, afterwards the final destination.
-  // Saved coordinates are used; for older trips saved without them the address is looked up, and
-  // nothing is ever substituted with made-up coordinates.
-  function targetTrip(tr: Trip) {
-    const dropoff = tr.status === 'PICKED_UP';
-    const label = dropoff ? tr.destination : tr.origin;
-    const lat = dropoff ? tr.destLat : tr.originLat;
-    const lng = dropoff ? tr.destLng : tr.originLng;
-    if (lat != null && lng != null) wp.setPlace('to', { label, coord: { lat, lng } });
-    else void wp.resolve('to', label);
-  }
-
-  function loadTripIntoNav(tr: Trip) {
-    wp.useMyLocation('from');
-    targetTrip(tr);
-  }
-
-  // When the patient is picked up (or the trip is otherwise advanced) the target moves on by itself.
-  useEffect(() => {
-    if (!selectedTrip || selectedTrip.status === 'COMPLETED' || selectedTrip.status === 'CANCELLED') return;
-    targetTrip(selectedTrip);
-    wp.useMyLocation('from'); // the driver has moved on: start from where they are now
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedTrip?.id, selectedTrip?.status]);
-
-  // Opening the navigation tab with no start yet: use the real position.
-  const gpsAsked = useRef(false);
-  useEffect(() => {
-    if (activeTab !== 'navigation' || gpsAsked.current || from.coord || from.label) return;
-    gpsAsked.current = true;
-    wp.useMyLocation('from');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
-
-  // ─── Start Navigation for Trip (Called from Calendar or List) ───
+  // The map screen follows the selected trip by itself (start = my real position, target = patient, then
+  // destination); opening a trip from the calendar just selects it and shows the map.
   const startNavForTrip = (tr: Trip) => {
     setSelectedTrip(tr);
-    loadTripIntoNav(tr);
     setActiveTab('navigation');
   };
-
-  // ─── Send Position to Server ───
-  const sendPosition = useCallback(() => {
-    if (!driverId) return;
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude } = pos.coords;
-        try {
-          await api.drivers.sendLocation(driverId, latitude, longitude);
-          setLocMsg('تم تحديث موقعك بنجاح');
-        } catch {
-          setLocMsg('تعذر تحديث الموقع');
-        }
-      },
-      () => setLocMsg('يرجى تفعيل خدمة الموقع (GPS)'),
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  }, [driverId]);
-
-  // Live Location Watcher
-  useEffect(() => {
-    if (!sharing) {
-      if (watchRef.current != null) {
-        clearInterval(watchRef.current);
-        watchRef.current = null;
-      }
-      return;
-    }
-    sendPosition();
-    watchRef.current = window.setInterval(sendPosition, 30000);
-    return () => {
-      if (watchRef.current != null) clearInterval(watchRef.current);
-    };
-  }, [sharing, sendPosition]);
 
   // Step Advance Trip
   const advanceTrip = async (tr: Trip) => {
@@ -268,9 +178,7 @@ export function DriverApp() {
     if (!action) return;
     const updated = await api.trips.setStatus(tr.id, action.status);
     setTrips((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-    if (selectedTrip?.id === updated.id) {
-      setSelectedTrip(updated);
-    }
+    if (selectedRef.current?.id === updated.id) setSelectedTrip(updated);
     loadDriver();
   };
 
@@ -302,37 +210,10 @@ export function DriverApp() {
     }
   };
 
-  // Map Points for Navigation View
-  const points = useMemo<MapPoint[]>(() => {
-    const list: MapPoint[] = [];
-    if (from.coord) list.push({ id: 'origin', lat: from.coord.lat, lng: from.coord.lng, title: from.label || 'الانطلاق', color: '#137333' });
-    if (to.coord) list.push({ id: 'dest', lat: to.coord.lat, lng: to.coord.lng, title: to.label || 'الوجهة', color: '#d93025' });
-    return list;
-  }, [from, to]);
-
-  // Starting the drive to the patient puts the trip "on the way" (as the driver would do by hand).
-  const beginNavigation = async () => {
-    unlockSpeech();
-    if (selectedTrip?.status === 'ASSIGNED') {
-      try {
-        await advanceTrip(selectedTrip);
-      } catch {
-        /* navigation must not be blocked by a failed status update */
-      }
-    }
-    if (navRoute && to.coord) setNav({ route: navRoute, destination: { label: to.label, coord: to.coord }, mode: travelMode });
-  };
-
-  // At arrival: "arrived at the patient" before pick-up, "finish the trip" after.
-  const arrivalStatus = selectedTrip && (selectedTrip.status === 'EN_ROUTE' || selectedTrip.status === 'PICKED_UP') ? NEXT_ACTION[selectedTrip.status] : undefined;
-  const arrivalAction =
-    selectedTrip && arrivalStatus ? { label: arrivalStatus.label, run: async () => void (await advanceTrip(selectedTrip)) } : undefined;
-
   return (
-    <div className="min-h-screen bg-bg pb-20 md:pb-10">
-      {nav && <NavigationScreen destination={nav.destination} mode={nav.mode} route={nav.route} arrivalAction={arrivalAction} onExit={() => setNav(null)} />}
+    <div className={activeTab === 'navigation' ? 'h-[100dvh] overflow-hidden bg-bg' : 'min-h-screen bg-bg pb-20 md:pb-10'}>
       {/* ─── Driver Top Header ─── */}
-      <header className="sticky top-0 z-30 bg-brand-900 px-4 py-3 text-white shadow-md">
+      <header ref={headerRef} className="sticky top-0 z-30 bg-brand-900 px-4 py-3 text-white shadow-md">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 font-bold text-white shadow-sm">
@@ -347,6 +228,30 @@ export function DriverApp() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Live location sharing: on by itself, the driver can pause it */}
+            <button
+              type="button"
+              onClick={() => share.setEnabled(!share.enabled)}
+              title={share.enabled ? 'موقعك يُشارك مع المنسق مباشرة. اضغط للإيقاف' : 'اضغط لتشغيل مشاركة موقعك مع المنسق'}
+              className={`rounded-lg border px-2.5 py-1 text-xs font-bold ${
+                share.state === 'live'
+                  ? 'border-emerald-500/40 bg-emerald-500/20 text-emerald-300'
+                  : share.state === 'off'
+                    ? 'border-white/20 bg-white/10 text-white/70'
+                    : 'border-amber-500/40 bg-amber-500/20 text-amber-200'
+              }`}
+              data-testid="share-toggle"
+            >
+              {share.state === 'live'
+                ? '📡 مباشر'
+                : share.state === 'starting'
+                  ? '📡 …'
+                  : share.state === 'denied'
+                    ? '⚠️ فعّل الموقع'
+                    : share.state === 'unavailable'
+                      ? '⚠️ غير متاح'
+                      : '⏸ متوقف'}
+            </button>
             {/* Read-Only Status Display (Set by Admin/Coordinator) */}
             <span
               className={`rounded-lg px-2.5 py-1 text-xs font-bold border flex items-center gap-1.5 ${
@@ -402,7 +307,7 @@ export function DriverApp() {
       </header>
 
       {/* ─── Main Views ─── */}
-      <main className="p-3 md:p-4 max-w-6xl mx-auto">
+      <main className={activeTab === 'navigation' ? 'p-0' : 'p-3 md:p-4 max-w-6xl mx-auto'}>
         {/* ══════════════════ 1. GOOGLE CALENDAR VIEW (EXACT AS ADMIN) ══════════════════ */}
         {activeTab === 'calendar' && (
           <div className="space-y-3">
@@ -502,208 +407,17 @@ export function DriverApp() {
 
         {/* ══════════════════ 2. GOOGLE MAPS NAVIGATION (MOBILE-OPTIMIZED) ══════════════════ */}
         {activeTab === 'navigation' && (
-          <div className="space-y-2.5 md:space-y-0 md:grid md:grid-cols-12 md:gap-4 items-start">
-            {/* ─── Column 1: Controls & Route Details (Full width on Mobile, 5 cols on Desktop) ─── */}
-            <div className="space-y-2.5 md:col-span-5">
-              {/* Google Maps Route Inputs Card */}
-              <Card className="p-2.5 sm:p-3 space-y-2">
-                {/* Header & Travel Mode Toggle */}
-                <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white font-black text-xs shadow-sm">
-                      🧭
-                    </span>
-                    <span className="text-xs font-bold text-fg truncate">ملاحة خرائط Google</span>
-                  </div>
-
-                  {/* Mode Selector */}
-                  <div className="flex items-center gap-1 bg-surface2 p-0.5 rounded-lg border border-border/70 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setTravelMode('driving')}
-                      className={`rounded-md px-2 py-0.5 text-[11px] font-bold transition ${
-                        travelMode === 'driving' ? 'bg-blue-600 text-white shadow-sm' : 'text-muted hover:text-fg'
-                      }`}
-                    >
-                      🚗 سيارة
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTravelMode('walking')}
-                      className={`rounded-md px-2 py-0.5 text-[11px] font-bold transition ${
-                        travelMode === 'walking' ? 'bg-blue-600 text-white shadow-sm' : 'text-muted hover:text-fg'
-                      }`}
-                    >
-                      🚶 مشي
-                    </button>
-                  </div>
-                </div>
-
-                {/* Which leg of the trip this navigation is for */}
-                {selectedTrip && selectedTrip.status !== 'COMPLETED' && selectedTrip.status !== 'CANCELLED' && (
-                  <div
-                    className={`flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs font-bold ${
-                      selectedTrip.status === 'PICKED_UP' ? 'bg-emerald-500/10 text-emerald-700' : 'bg-blue-500/10 text-blue-700'
-                    }`}
-                    data-testid="trip-stage"
-                  >
-                    <span>{selectedTrip.status === 'PICKED_UP' ? '🏥' : '🧑‍⚕️'}</span>
-                    <span className="truncate">
-                      {selectedTrip.status === 'PICKED_UP' ? 'التوجه إلى الوجهة' : 'التوجه إلى المريض'} • {selectedTrip.patientName}
-                    </span>
-                  </div>
-                )}
-
-                {/* Search boxes: suggestions as you type, "my location", swap */}
-                <div className="relative space-y-1.5">
-                  <PlaceInput
-                    value={wp.fromText}
-                    badge="A"
-                    badgeClass="bg-emerald-600"
-                    placeholder="حدد نقطة الانطلاق..."
-                    unresolved={fromDirty || (!!wp.fromText && !from.coord)}
-                    onChange={(t) => wp.setText('from', t)}
-                    onPick={(pl) => wp.setPlace('from', { label: pl.label, coord: { lat: pl.lat, lng: pl.lng } })}
-                    onClear={() => wp.clear('from')}
-                    onUseCurrentLocation={() => wp.useMyLocation('from')}
-                  />
-                  <div className="flex justify-end pe-3 -my-1 relative z-10">
-                    <button
-                      type="button"
-                      onClick={wp.swap}
-                      title="تبديل نقطة الانطلاق والوجهة"
-                      className="grid h-6 w-6 place-items-center rounded-full bg-surface border border-border text-muted shadow-sm hover:text-fg hover:border-blue-500 transition active:scale-95 text-xs"
-                    >
-                      ⇅
-                    </button>
-                  </div>
-                  <PlaceInput
-                    value={wp.toText}
-                    badge="B"
-                    badgeClass="bg-red-600"
-                    placeholder="حدد الوجهة..."
-                    unresolved={toDirty || (!!wp.toText && !to.coord)}
-                    onChange={(t) => wp.setText('to', t)}
-                    onPick={(pl) => wp.setPlace('to', { label: pl.label, coord: { lat: pl.lat, lng: pl.lng } })}
-                    onClear={() => wp.clear('to')}
-                  />
-                  {wp.geoMsg && <p className="ps-1 text-[11px] text-amber-600">{wp.geoMsg}</p>}
-                </div>
-
-                {/* Route options */}
-                {calculatingRoute && <p className="text-[11px] text-muted text-center animate-pulse py-1">جارٍ حساب مسار الملاحة...</p>}
-                {routeError && !calculatingRoute && (
-                  <div className="flex items-center justify-between gap-2 rounded-xl bg-red-500/10 px-2.5 py-2 text-xs text-red-600">
-                    <span>{routeError}</span>
-                    {retryable && (
-                      <button type="button" onClick={retryRoute} className="shrink-0 rounded-lg bg-red-600 px-2 py-1 font-bold text-white">
-                        إعادة المحاولة
-                      </button>
-                    )}
-                  </div>
-                )}
-                {routes.length > 0 && !calculatingRoute && (
-                  <div className="flex snap-x gap-2 overflow-x-auto pb-1" role="radiogroup" aria-label="خيارات المسار">
-                    {routes.map((r, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        role="radio"
-                        aria-checked={i === selRoute}
-                        onClick={() => setSelRoute(i)}
-                        className={`w-40 shrink-0 snap-start rounded-xl border px-2.5 py-2 text-start transition ${
-                          i === selRoute ? 'border-blue-500 bg-blue-500/10' : 'border-border bg-surface2 hover:border-blue-400'
-                        }`}
-                      >
-                        <div className={`text-lg font-black leading-none ${i === selRoute ? 'text-blue-600' : 'text-fg'}`}>{formatDuration(r.duration)}</div>
-                        <div className="mt-1 truncate text-[11px] text-muted">
-                          {formatDistance(r.distance)}
-                          {r.summary ? ` • عبر ${r.summary}` : ''}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Start in-app navigation */}
-                <button
-                  type="button"
-                  onClick={() => void beginNavigation()}
-                  disabled={!navRoute || calculatingRoute || fromDirty || toDirty}
-                  data-testid="driver-start-nav"
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-blue-600/30 transition hover:bg-blue-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <span className="text-sm">🧭</span>
-                  <span>{calculatingRoute ? 'جارٍ حساب المسار…' : fromDirty || toDirty ? 'اختر الأماكن من الاقتراحات' : 'بدء الملاحة'}</span>
-                </button>
-              </Card>
-
-              {/* Linked Transfer Context (if coming from a Trip) */}
-              {selectedTrip && (
-                <div className="rounded-xl bg-surface border border-border p-2.5 space-y-2 text-xs shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] text-blue-500 font-bold">رحلة ترانسفير مرتبطة</span>
-                      <p className="font-bold text-fg text-xs sm:text-sm">المريض: {selectedTrip.patientName}</p>
-                      <p className="text-muted font-mono text-[11px]" dir="ltr">{selectedTrip.patientPhone}</p>
-                    </div>
-                    <StatusPill status={selectedTrip.status} label={t(tripStatusKeys[selectedTrip.status])} />
-                  </div>
-
-                  {/* Actions for Transfer */}
-                  <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-                    {NEXT_ACTION[selectedTrip.status] && (
-                      <Button
-                        size="sm"
-                        variant={NEXT_ACTION[selectedTrip.status]?.variant}
-                        className="w-full font-bold text-xs py-1.5"
-                        onClick={() => advanceTrip(selectedTrip)}
-                      >
-                        {NEXT_ACTION[selectedTrip.status]?.label}
-                      </Button>
-                    )}
-                    <Button size="sm" variant="success" className="w-full text-xs py-1.5" onClick={() => setWaTrip(selectedTrip)}>
-                      💬 واتساب
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Location Sharing Box (Compact) */}
-              <Card className="p-2.5 flex items-center justify-between text-xs">
-                <div className="min-w-0 me-2">
-                  <p className="text-xs font-bold text-fg truncate">مشاركة الموقع المباشر مع العيادة</p>
-                  <p className="text-[10px] text-muted truncate">لتتبع السيارة في الوقت الفعلي</p>
-                  {locMsg && <p className="text-[10px] text-emerald-600 font-medium">{locMsg}</p>}
-                </div>
-                <Button
-                  size="sm"
-                  variant={sharing ? 'danger' : 'secondary'}
-                  className="text-xs shrink-0 py-1 px-2.5"
-                  onClick={() => {
-                    setSharing((s) => !s);
-                    setLocMsg('');
-                  }}
-                >
-                  {sharing ? 'إيقاف' : 'مشاركة'}
-                </Button>
-              </Card>
-            </div>
-
-            {/* ─── Column 2: Map Canvas (Full width on Mobile, 7 cols on Desktop) ─── */}
-            <div className="md:col-span-7">
-              <Card className="overflow-hidden p-1.5 shadow-card">
-                <div className="h-[280px] sm:h-[350px] md:h-[520px] w-full">
-                  <MapView
-                    points={points}
-                    route={navRoute ? navRoute.geometry.coordinates : null}
-                    height="100%"
-                    center={from.coord ?? mapConfig.defaultCenter}
-                    zoom={13}
-                  />
-                </div>
-              </Card>
-            </div>
+          <div style={{ height: `calc(100dvh - ${chrome}px)` }} data-testid="driver-map-area">
+            {/* The same map screen as the admin's, filling the screen. It follows the selected trip:
+                start = my real position, target = the patient, then the destination. */}
+            <MapScreen
+              // One screen per trip: it must stay put when the trip's status changes (e.g. the arrival card
+              // that confirms "trip finished" would vanish if the map were rebuilt at that moment).
+              key={selectedTrip?.id ?? 'free'}
+              className="h-full rounded-none"
+              trip={selectedTrip}
+              onAdvanceTrip={advanceTrip}
+            />
           </div>
         )}
 
@@ -793,7 +507,7 @@ export function DriverApp() {
       </main>
 
       {/* ─── Bottom Navigation Bar (Mobile Friendly) ─── */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-border bg-surface/95 backdrop-blur-md py-2 shadow-2xl md:hidden">
+      <nav ref={navBarRef} className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-border bg-surface/95 backdrop-blur-md py-2 shadow-2xl md:hidden">
         {[
           { id: 'calendar', label: 'التقويم', icon: '📅' },
           { id: 'navigation', label: 'الملاحة', icon: '🧭' },
@@ -821,7 +535,6 @@ export function DriverApp() {
           setCalDetailTrip(null);
           loadDriver();
         }}
-        onWhatsApp={(tr) => setWaTrip(tr)}
         onNavigate={(tr) => startNavForTrip(tr)}
       />
 
@@ -879,8 +592,6 @@ export function DriverApp() {
         </div>
       </Modal>
 
-      {/* WhatsApp Modal */}
-      <WhatsAppModal trip={waTrip} onClose={() => setWaTrip(null)} />
     </div>
   );
 }

@@ -31,7 +31,8 @@ export function WhatsAppModal({
       .catch((e) => setError(e.message));
   }, [trip]);
 
-  const link = data ? `https://wa.me/${data.normalizedPhone}?text=${encodeURIComponent(text)}` : '#';
+  // Exactly the stored digits: nothing is added. A number saved without its country code gets no link.
+  const link = data?.phoneValid ? `https://wa.me/${data.normalizedPhone}?text=${encodeURIComponent(text)}` : null;
 
   const copy = async () => {
     try {
@@ -61,10 +62,26 @@ export function WhatsAppModal({
             <Button variant="secondary" onClick={copy}>
               {copied ? t('wa.copied') : t('wa.copy')}
             </Button>
-            <a href={link} target="_blank" rel="noreferrer" className="inline-flex">
-              <Button variant="success">{t('wa.open')}</Button>
-            </a>
+            {link ? (
+              <a
+                href={link}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex"
+                onClick={() => {
+                  // Sent by hand: clear the driver's request, if there was one.
+                  if (trip) void api.trips.markPatientNoticeSent(trip.id).catch(() => {});
+                }}
+              >
+                <Button variant="success">{t('wa.open')}</Button>
+              </a>
+            ) : null}
           </div>
+          {!data.phoneValid && (
+            <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs font-semibold text-amber-700" data-testid="phone-invalid">
+              ⚠️ الرقم محفوظ بلا رمز الدولة ولا يمكن فتح واتساب به. عدّل الرحلة واكتب الرقم مع رمز الدولة (مثل +905331234567).
+            </p>
+          )}
           <p className="text-xs text-muted">{t('wa.note')}</p>
         </div>
       )}

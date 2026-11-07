@@ -6,6 +6,7 @@ import { useI18n } from '../../i18n';
 import { tripTypeKeys } from '../../labels';
 import { Button, ErrorText, Field, Input, Modal, Select, Textarea } from '../ui';
 import { PlaceInput } from '../../features/map/PlaceInput';
+import { isValidInternationalPhone, PHONE_HELP } from '../../lib/phone';
 
 const TRIP_TYPES: TripType[] = ['AIRPORT_TO_HOTEL', 'HOTEL_TO_AIRPORT', 'HOTEL_TO_CLINIC', 'CLINIC_TO_HOTEL'];
 
@@ -80,7 +81,13 @@ export function TripFormModal({ open, onClose, onSaved, drivers, trip, defaultSt
     }
   }, [open, trip, defaultStart]);
 
+  const phoneOk = isValidInternationalPhone(form.patientPhone);
+
   const save = async () => {
+    if (!phoneOk) {
+      setError(PHONE_HELP);
+      return;
+    }
     setBusy(true);
     setError('');
     try {
@@ -122,12 +129,12 @@ export function TripFormModal({ open, onClose, onSaved, drivers, trip, defaultSt
               placeholder={t('tripForm.patientName')}
             />
           </Field>
-          <Field label={t('tripForm.patientPhone')}>
+          <Field label={t('tripForm.patientPhone')} hint={form.patientPhone && !phoneOk ? PHONE_HELP : undefined}>
             <Input
               value={form.patientPhone}
               onChange={(e) => setForm({ ...form, patientPhone: e.target.value })}
               dir="ltr"
-              placeholder="+9665xxxxxxxx"
+              placeholder="+905331234567"
             />
           </Field>
           <Field label={t('tripForm.type')}>
@@ -194,7 +201,7 @@ export function TripFormModal({ open, onClose, onSaved, drivers, trip, defaultSt
           <Button
             onClick={save}
             loading={busy}
-            disabled={!form.patientName || !form.patientPhone || !form.origin || !form.destination || !form.start}
+            disabled={!form.patientName || !phoneOk || !form.origin || !form.destination || !form.start}
           >
             {trip ? t('tripForm.saveChanges') : t('tripForm.create')}
           </Button>

@@ -133,6 +133,12 @@ export function CalendarPage() {
     loadTrips();
   };
 
+  const deleteTrip = async (trip: Trip) => {
+    await api.trips.delete(trip.id);
+    setDetailTrip(null);
+    loadTrips();
+  };
+
   const cancelTrip = async (trip: Trip) => {
     await api.trips.cancel(trip.id);
     setDetailTrip(null);
@@ -332,6 +338,7 @@ export function CalendarPage() {
         }}
         onStatus={changeStatus}
         onCancel={cancelTrip}
+        onDelete={deleteTrip}
       />
 
       <Modal open={!!assignTrip} title={t('assign.title')} onClose={() => setAssignTrip(null)}>

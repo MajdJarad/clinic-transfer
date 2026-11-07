@@ -4,6 +4,7 @@ import { driverStatusSchema } from '../constants';
 import { prisma } from '../db';
 import { traccarEnabled } from '../env';
 import { asyncHandler, HttpError } from '../lib/http';
+import { rateLimit } from '../lib/rateLimit';
 import { fetchLatestPositions, parseDeviceId } from '../lib/traccar';
 import { authenticate, requireRole } from '../middleware/auth';
 
@@ -65,19 +66,31 @@ driversRouter.patch(
 const locationSchema = z.object({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
+  heading: z.number().min(0).max(360).nullish(),
+  speed: z.number().min(0).max(100).nullish(), // m/s, as the browser reports it
+  accuracy: z.number().min(0).nullish(),
 });
 
 driversRouter.post(
   '/:id/location',
+  // A phone reports every few seconds; this only stops a runaway client.
+  rateLimit({ windowMs: 60_000, max: 150 }),
   asyncHandler(async (req, res) => {
     const isSelf = req.user!.driverId === req.params.id;
     if (!isSelf && req.user!.role !== 'ADMIN') {
       throw new HttpError(403, 'Insufficient permissions');
     }
-    const { lat, lng } = locationSchema.parse(req.body);
+    const { lat, lng, heading, speed, accuracy } = locationSchema.parse(req.body);
     const driver = await prisma.driver.update({
       where: { id: req.params.id },
-      data: { lat, lng, lastSeen: new Date() },
+      data: {
+        lat,
+        lng,
+        heading: heading ?? null,
+        speedKmh: speed != null ? Math.round(speed * 3.6 * 10) / 10 : null,
+        accuracy: accuracy ?? null,
+        lastSeen: new Date(),
+      },
       select: { id: true, lat: true, lng: true, lastSeen: true },
     });
     res.json(driver);
@@ -126,25 +139,39 @@ driversRouter.get(
       }
     }
 
-    const result = drivers
-      .map((d) => {
-        const deviceId = parseDeviceId(d.traccarDeviceId);
-        const pos = deviceId != null ? traccar.get(deviceId) : undefined;
-        const seen = pos?.fixTime ?? pos?.deviceTime;
-        const lastSeen = seen ? new Date(seen) : d.lastSeen;
-        return {
-          id: d.id,
-          name: d.user.name,
-          phone: d.user.phone,
-          status: d.status,
-          lat: pos ? pos.latitude : d.lat,
-          lng: pos ? pos.longitude : d.lng,
-          lastSeen,
-          source: pos ? 'traccar' : 'phone',
-          vehicle: d.vehicle,
-        };
-      })
-      .filter((d) => d.lat != null && d.lng != null);
+    // The trip each driver is on right now (never includes the patient's phone).
+    const active = await prisma.trip.findMany({
+      where: { driverId: { in: drivers.map((d) => d.id) }, status: { in: ['EN_ROUTE', 'ARRIVED', 'PICKED_UP'] } },
+      select: { id: true, driverId: true, status: true, patientName: true, origin: true, destination: true },
+      orderBy: { scheduledAt: 'desc' },
+    });
+    const tripOf = new Map<string, (typeof active)[number]>();
+    for (const t of active) if (t.driverId && !tripOf.has(t.driverId)) tripOf.set(t.driverId, t);
+
+    const now = Date.now();
+    const result = drivers.map((d) => {
+      const deviceId = parseDeviceId(d.traccarDeviceId);
+      const pos = deviceId != null ? traccar.get(deviceId) : undefined;
+      const seen = pos?.fixTime ?? pos?.deviceTime;
+      const lastSeen = seen ? new Date(seen) : d.lastSeen;
+      return {
+        id: d.id,
+        name: d.user.name,
+        phone: d.user.phone,
+        status: d.status,
+        lat: pos ? pos.latitude : d.lat,
+        lng: pos ? pos.longitude : d.lng,
+        heading: pos ? null : d.heading,
+        speedKmh: pos ? null : d.speedKmh,
+        accuracy: pos ? null : d.accuracy,
+        lastSeen,
+        // seconds since the last position, computed here so the screen does not depend on its own clock
+        ageSeconds: lastSeen ? Math.max(0, Math.round((now - lastSeen.getTime()) / 1000)) : null,
+        source: pos ? 'traccar' : 'phone',
+        vehicle: d.vehicle,
+        activeTrip: tripOf.get(d.id) ? { ...tripOf.get(d.id)!, driverId: undefined } : null,
+      };
+    });
 
     res.json(result);
   }),

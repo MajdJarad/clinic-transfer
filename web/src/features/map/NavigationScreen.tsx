@@ -41,6 +41,8 @@ interface NavigationScreenProps {
   avoid?: { tolls: boolean; highways: boolean; ferries: boolean };
   /** Optional action on the arrival card (e.g. the trip's next status: "arrived at the patient"). */
   arrivalAction?: { label: string; run: () => Promise<void> | void };
+  /** A second, optional action on the arrival card (e.g. tell the patient the car is here). */
+  secondaryAction?: { label: string; run: () => Promise<string | void> | string | void };
   onExit: () => void;
 }
 
@@ -83,7 +85,7 @@ export function unlockSpeech() {
 
 type Status = 'locating' | 'navigating' | 'rerouting' | 'arrived';
 
-export function NavigationScreen({ destination, mode, route, avoid, arrivalAction, onExit }: NavigationScreenProps) {
+export function NavigationScreen({ destination, mode, route, avoid, arrivalAction, secondaryAction, onExit }: NavigationScreenProps) {
   const { googleMapsApiKey, googleMapId } = useMapConfig();
   const { theme } = useTheme();
 
@@ -98,6 +100,8 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
   const [speedKmh, setSpeedKmh] = useState<number | null>(null);
   const [suggest, setSuggest] = useState<{ model: RouteModel; savedSec: number } | null>(null);
   const [actionState, setActionState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
+  const [secondaryNote, setSecondaryNote] = useState('');
+  const [secondaryBusy, setSecondaryBusy] = useState(false);
   const [follow, setFollow] = useState(true);
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState('');
@@ -547,6 +551,19 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
     }
   };
 
+  const runSecondary = async () => {
+    if (!secondaryAction) return;
+    setSecondaryBusy(true);
+    try {
+      const msg = await secondaryAction.run();
+      setSecondaryNote(typeof msg === 'string' ? msg : '✓ تم');
+    } catch (e) {
+      setSecondaryNote(e instanceof Error ? e.message : 'تعذّر التنفيذ');
+    } finally {
+      setSecondaryBusy(false);
+    }
+  };
+
   // ── derived UI values
   const up = upcomingManeuver(model, progress.stepIndex, destination.label);
   const atStart = alongRef.current < 15 && progress.stepIndex === 0 && !up.isArrival;
@@ -727,6 +744,19 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
               >
                 {actionState === 'busy' ? 'جارٍ التحديث…' : arrivalAction.label}
               </button>
+            )}
+            {secondaryAction && (
+              <>
+                <button
+                  onClick={runSecondary}
+                  disabled={secondaryBusy}
+                  className="mt-3 w-full rounded-xl border border-emerald-600 py-3 text-sm font-bold text-emerald-700 disabled:opacity-60"
+                  data-testid="nav-secondary-action"
+                >
+                  {secondaryBusy ? '…' : secondaryAction.label}
+                </button>
+                {secondaryNote && <p className="mt-2 text-xs font-semibold text-slate-600" data-testid="nav-secondary-note">{secondaryNote}</p>}
+              </>
             )}
             {actionState === 'done' && <p className="mt-4 text-sm font-bold text-emerald-700" data-testid="nav-action-done">✓ تم تحديث حالة الرحلة</p>}
             {actionState === 'error' && <p className="mt-3 text-xs font-bold text-red-600">تعذّر تحديث الحالة، حاول مرة أخرى.</p>}
