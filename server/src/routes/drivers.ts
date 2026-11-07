@@ -64,6 +64,8 @@ driversRouter.patch(
   }),
 );
 
+const GHOST_AFTER_MS = 12 * 60 * 60 * 1000;
+
 const locationSchema = z.object({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
@@ -77,8 +79,9 @@ driversRouter.post(
   // A phone reports every few seconds; this only stops a runaway client.
   rateLimit({ windowMs: 60_000, max: 150 }),
   asyncHandler(async (req, res) => {
-    const isSelf = req.user!.driverId === req.params.id;
-    if (!isSelf && req.user!.role !== 'ADMIN') {
+    // Only the driver's own phone reports his position: nobody, admins included, can place a car on the
+    // map for someone else. (Hardware trackers come in through Traccar, not through this endpoint.)
+    if (req.user!.driverId !== req.params.id) {
       throw new HttpError(403, 'Insufficient permissions');
     }
     const { lat, lng, heading, speed, accuracy } = locationSchema.parse(req.body);
@@ -97,6 +100,22 @@ driversRouter.post(
     // The trip follows the driver: arrived / picked up / completed are decided from this position.
     const moved = await progressTripFromPosition(driver.id, { lat, lng, accuracy }).catch(() => null);
     res.json({ ...driver, tripUpdate: moved });
+  }),
+);
+
+// Forget a driver's stored position (a stale or wrong last-known point). It comes back by itself
+// the next time his phone reports.
+driversRouter.delete(
+  '/:id/location',
+  requireRole('ADMIN', 'COORDINATOR'),
+  asyncHandler(async (req, res) => {
+    const found = await prisma.driver.findUnique({ where: { id: req.params.id }, select: { id: true } });
+    if (!found) throw new HttpError(404, 'Driver not found');
+    await prisma.driver.update({
+      where: { id: found.id },
+      data: { lat: null, lng: null, heading: null, speedKmh: null, accuracy: null, lastSeen: null },
+    });
+    res.status(204).end();
   }),
 );
 
@@ -157,16 +176,18 @@ driversRouter.get(
       const pos = deviceId != null ? traccar.get(deviceId) : undefined;
       const seen = pos?.fixTime ?? pos?.deviceTime;
       const lastSeen = seen ? new Date(seen) : d.lastSeen;
+      // A point from more than half a day ago is no longer "where he is": do not draw a ghost.
+      const ghost = !!lastSeen && now - lastSeen.getTime() > GHOST_AFTER_MS;
       return {
         id: d.id,
         name: d.user.name,
         phone: d.user.phone,
         status: d.status,
-        lat: pos ? pos.latitude : d.lat,
-        lng: pos ? pos.longitude : d.lng,
-        heading: pos ? null : d.heading,
-        speedKmh: pos ? null : d.speedKmh,
-        accuracy: pos ? null : d.accuracy,
+        lat: ghost ? null : pos ? pos.latitude : d.lat,
+        lng: ghost ? null : pos ? pos.longitude : d.lng,
+        heading: pos || ghost ? null : d.heading,
+        speedKmh: pos || ghost ? null : d.speedKmh,
+        accuracy: pos || ghost ? null : d.accuracy,
         lastSeen,
         // seconds since the last position, computed here so the screen does not depend on its own clock
         ageSeconds: lastSeen ? Math.max(0, Math.round((now - lastSeen.getTime()) / 1000)) : null,
