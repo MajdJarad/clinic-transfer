@@ -5,8 +5,11 @@ import {
   formatDistance,
   formatDuration,
   haversine,
+  isSameRoute,
   pointAt,
   snapToPath,
+  trafficAhead,
+  trafficZones,
   upcomingManeuver,
   type RouteData,
 } from './routeNav';
@@ -128,5 +131,66 @@ describe('formatting', () => {
   });
   it('computes great-circle distance', () => {
     expect(Math.round(haversine({ lat: 41, lng: 29 }, { lat: 41.01, lng: 29 }))).toBe(1112);
+  });
+});
+
+describe('live traffic along the route', () => {
+  const base = makeRoute();
+  // Congestion on polyline points 20-40 (200-400 m: slow) and 41-60 (400-600 m: jam), then 150-160 (1500-1600 m: slow)
+  const m = buildRouteModel({
+    ...base,
+    traffic: [
+      { from: 20, to: 40, speed: 'SLOW' },
+      { from: 41, to: 60, speed: 'TRAFFIC_JAM' },
+      { from: 150, to: 160, speed: 'SLOW' },
+    ],
+  });
+
+  it('merges touching stretches into one zone and keeps the worst condition', () => {
+    const zones = trafficZones(m);
+    expect(zones).toHaveLength(2);
+    expect(zones[0].speed).toBe('TRAFFIC_JAM');
+    expect(zones[0].start).toBeGreaterThan(190);
+    expect(zones[0].end).toBeGreaterThan(590);
+  });
+
+  it('reports how far the next congestion is and how long it is', () => {
+    const t = trafficAhead(m, 0)!;
+    expect(t.inside).toBe(false);
+    expect(Math.abs(t.startsIn - 200)).toBeLessThan(15);
+    expect(Math.abs(t.length - 400)).toBeLessThan(25);
+  });
+
+  it('knows when the vehicle is inside a congested stretch', () => {
+    const t = trafficAhead(m, 300)!;
+    expect(t.inside).toBe(true);
+    expect(t.startsIn).toBe(0);
+    expect(Math.abs(t.length - 300)).toBeLessThan(25);
+  });
+
+  it('moves on to the following zone, honours the horizon, and ends when none is left', () => {
+    expect(Math.abs(trafficAhead(m, 700)!.startsIn - 800)).toBeLessThan(15);
+    expect(trafficAhead(m, 700, 500)).toBeNull();
+    expect(trafficAhead(m, 1700)).toBeNull();
+  });
+
+  it('a route with no congestion has no zones', () => {
+    expect(trafficZones(buildRouteModel(base))).toEqual([]);
+    expect(trafficAhead(buildRouteModel(base), 0)).toBeNull();
+  });
+});
+
+describe('telling a refreshed route from a different one', () => {
+  const a = buildRouteModel(makeRoute()).pi;
+  it('the same roads (even with fewer points) are the same route', () => {
+    const fewer = buildRouteModel({ ...makeRoute(), geometry: { type: 'LineString', coordinates: makeRoute().geometry.coordinates.filter((_, i) => i % 5 === 0) } }).pi;
+    expect(isSameRoute(a, fewer)).toBe(true);
+  });
+  it('a parallel road 300 m away is a different route', () => {
+    const shifted = buildRouteModel({
+      ...makeRoute(),
+      geometry: { type: 'LineString', coordinates: makeRoute().geometry.coordinates.map(([x, y]) => [x + 300 * M_LNG, y] as [number, number]) },
+    }).pi;
+    expect(isSameRoute(a, shifted)).toBe(false);
   });
 });

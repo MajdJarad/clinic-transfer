@@ -4,10 +4,9 @@ import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
 import { useMapConfig } from '../config';
 import { MapView, type MapPoint } from '../features/map/MapView';
-import { DEFAULT_DESTINATION, DEFAULT_ORIGIN } from '../features/map/googleMaps';
-import { NavigationScreen } from '../features/map/NavigationScreen';
+import { NavigationScreen, unlockSpeech, type NavTarget } from '../features/map/NavigationScreen';
 import { PlaceInput } from '../features/map/PlaceInput';
-import { formatDistance, formatDuration } from '../features/map/routeNav';
+import { formatDistance, formatDuration, type RouteData } from '../features/map/routeNav';
 import { NO_AVOID, useRoutes } from '../features/map/useRoutes';
 import { useWaypoints } from '../features/map/useWaypoints';
 import { WhatsAppModal } from '../components/WhatsAppModal';
@@ -63,6 +62,8 @@ export function DriverApp() {
   const [driver, setDriver] = useState<Driver | null>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const selectedRef = useRef<Trip | null>(null);
+  selectedRef.current = selectedTrip;
   const [waTrip, setWaTrip] = useState<Trip | null>(null);
 
   // ─── Google Calendar State (Exact as Admin/Coordinator) ───
@@ -72,14 +73,13 @@ export function DriverApp() {
   const [calQuery, setCalQuery] = useState('');
 
   // ─── Google Maps Navigation State (Fully Editable Waypoints) ───
-  const wp = useWaypoints(
-    { label: DEFAULT_ORIGIN.label, coord: DEFAULT_ORIGIN.coord },
-    { label: DEFAULT_DESTINATION.label, coord: DEFAULT_DESTINATION.coord },
-  );
-  const { from, to, fromIsGps, fromDirty, toDirty } = wp;
+  const wp = useWaypoints({ label: '', coord: null }, { label: '', coord: null });
+  const { from, to, fromDirty, toDirty } = wp;
   const [travelMode, setTravelMode] = useState<'driving' | 'walking'>('driving');
   const [selRoute, setSelRoute] = useState(0);
-  const [navOpen, setNavOpen] = useState(false);
+  // A running navigation is a snapshot: it must not change or vanish when the planning data behind it does
+  // (e.g. the start point refreshes after the trip status changes).
+  const [nav, setNav] = useState<{ route: RouteData; destination: NavTarget; mode: 'driving' | 'walking' } | null>(null);
   const {
     routes,
     loading: calculatingRoute,
@@ -113,10 +113,17 @@ export function DriverApp() {
     api.drivers.me(driverId).then(setDriver).catch(() => {});
     api.trips.mine().then((data) => {
       setTrips(data);
-      if (data.length > 0 && !selectedTrip) {
+      // Keep the trip the driver is working on (refreshed with its new status); only pick one
+      // automatically the first time. (This callback is memoized, so it must read the current
+      // selection from a ref - the old code saw a stale "nothing selected" and jumped to another trip.)
+      const prev = selectedRef.current;
+      if (prev) {
+        const fresh = data.find((tr) => tr.id === prev.id);
+        if (fresh) setSelectedTrip(fresh);
+      } else if (data.length > 0) {
         const current = data.find((tr) => ACTIVE_STATUSES.includes(tr.status)) ?? data[0];
         setSelectedTrip(current);
-        if (current) loadTripIntoNav(current);
+        loadTripIntoNav(current);
       }
     }).catch(() => {});
   }, [driverId]);
@@ -178,15 +185,41 @@ export function DriverApp() {
     });
   }, [trips, calQuery]);
 
-  // ─── Show a trip's route in the navigation tab ───
-  // Uses the trip's saved coordinates; for older trips saved without them the address is looked up.
-  // It never substitutes made-up coordinates for a real address.
-  function loadTripIntoNav(tr: Trip) {
-    if (tr.originLat != null && tr.originLng != null) wp.setPlace('from', { label: tr.origin, coord: { lat: tr.originLat, lng: tr.originLng } });
-    else void wp.resolve('from', tr.origin);
-    if (tr.destLat != null && tr.destLng != null) wp.setPlace('to', { label: tr.destination, coord: { lat: tr.destLat, lng: tr.destLng } });
-    else void wp.resolve('to', tr.destination);
+  // ─── Navigating a trip ───
+  // Navigation always starts from where the driver really is (GPS). The target depends on the stage of
+  // the trip: before the patient is on board it is the pick-up point, afterwards the final destination.
+  // Saved coordinates are used; for older trips saved without them the address is looked up, and
+  // nothing is ever substituted with made-up coordinates.
+  function targetTrip(tr: Trip) {
+    const dropoff = tr.status === 'PICKED_UP';
+    const label = dropoff ? tr.destination : tr.origin;
+    const lat = dropoff ? tr.destLat : tr.originLat;
+    const lng = dropoff ? tr.destLng : tr.originLng;
+    if (lat != null && lng != null) wp.setPlace('to', { label, coord: { lat, lng } });
+    else void wp.resolve('to', label);
   }
+
+  function loadTripIntoNav(tr: Trip) {
+    wp.useMyLocation('from');
+    targetTrip(tr);
+  }
+
+  // When the patient is picked up (or the trip is otherwise advanced) the target moves on by itself.
+  useEffect(() => {
+    if (!selectedTrip || selectedTrip.status === 'COMPLETED' || selectedTrip.status === 'CANCELLED') return;
+    targetTrip(selectedTrip);
+    wp.useMyLocation('from'); // the driver has moved on: start from where they are now
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTrip?.id, selectedTrip?.status]);
+
+  // Opening the navigation tab with no start yet: use the real position.
+  const gpsAsked = useRef(false);
+  useEffect(() => {
+    if (activeTab !== 'navigation' || gpsAsked.current || from.coord || from.label) return;
+    gpsAsked.current = true;
+    wp.useMyLocation('from');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   // ─── Start Navigation for Trip (Called from Calendar or List) ───
   const startNavForTrip = (tr: Trip) => {
@@ -277,20 +310,27 @@ export function DriverApp() {
     return list;
   }, [from, to]);
 
-  // In-app turn-by-turn navigation (live GPS when the start point is "my location", otherwise a preview)
+  // Starting the drive to the patient puts the trip "on the way" (as the driver would do by hand).
+  const beginNavigation = async () => {
+    unlockSpeech();
+    if (selectedTrip?.status === 'ASSIGNED') {
+      try {
+        await advanceTrip(selectedTrip);
+      } catch {
+        /* navigation must not be blocked by a failed status update */
+      }
+    }
+    if (navRoute && to.coord) setNav({ route: navRoute, destination: { label: to.label, coord: to.coord }, mode: travelMode });
+  };
+
+  // At arrival: "arrived at the patient" before pick-up, "finish the trip" after.
+  const arrivalStatus = selectedTrip && (selectedTrip.status === 'EN_ROUTE' || selectedTrip.status === 'PICKED_UP') ? NEXT_ACTION[selectedTrip.status] : undefined;
+  const arrivalAction =
+    selectedTrip && arrivalStatus ? { label: arrivalStatus.label, run: async () => void (await advanceTrip(selectedTrip)) } : undefined;
 
   return (
     <div className="min-h-screen bg-bg pb-20 md:pb-10">
-      {navOpen && navRoute && from.coord && to.coord && (
-        <NavigationScreen
-          origin={{ label: from.label, coord: from.coord }}
-          destination={{ label: to.label, coord: to.coord }}
-          mode={travelMode}
-          route={navRoute}
-          startWithGps={fromIsGps}
-          onExit={() => setNavOpen(false)}
-        />
-      )}
+      {nav && <NavigationScreen destination={nav.destination} mode={nav.mode} route={nav.route} arrivalAction={arrivalAction} onExit={() => setNav(null)} />}
       {/* ─── Driver Top Header ─── */}
       <header className="sticky top-0 z-30 bg-brand-900 px-4 py-3 text-white shadow-md">
         <div className="flex items-center justify-between gap-2">
@@ -499,6 +539,21 @@ export function DriverApp() {
                   </div>
                 </div>
 
+                {/* Which leg of the trip this navigation is for */}
+                {selectedTrip && selectedTrip.status !== 'COMPLETED' && selectedTrip.status !== 'CANCELLED' && (
+                  <div
+                    className={`flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs font-bold ${
+                      selectedTrip.status === 'PICKED_UP' ? 'bg-emerald-500/10 text-emerald-700' : 'bg-blue-500/10 text-blue-700'
+                    }`}
+                    data-testid="trip-stage"
+                  >
+                    <span>{selectedTrip.status === 'PICKED_UP' ? '🏥' : '🧑‍⚕️'}</span>
+                    <span className="truncate">
+                      {selectedTrip.status === 'PICKED_UP' ? 'التوجه إلى الوجهة' : 'التوجه إلى المريض'} • {selectedTrip.patientName}
+                    </span>
+                  </div>
+                )}
+
                 {/* Search boxes: suggestions as you type, "my location", swap */}
                 <div className="relative space-y-1.5">
                   <PlaceInput
@@ -573,7 +628,7 @@ export function DriverApp() {
                 {/* Start in-app navigation */}
                 <button
                   type="button"
-                  onClick={() => setNavOpen(true)}
+                  onClick={() => void beginNavigation()}
                   disabled={!navRoute || calculatingRoute || fromDirty || toDirty}
                   data-testid="driver-start-nav"
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-blue-600/30 transition hover:bg-blue-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"

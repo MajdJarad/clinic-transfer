@@ -10,7 +10,7 @@ import { ExploreBar } from '../features/map/components/ExploreBar';
 import { MapControls, type LayerKey, type MapTypeKey } from '../features/map/components/MapControls';
 import { PlaceCard, type MapPick } from '../features/map/components/PlaceCard';
 import { createHtmlMarker, pinHtml } from '../features/map/googleMaps';
-import { NavigationScreen } from '../features/map/NavigationScreen';
+import { NavigationScreen, unlockSpeech, type NavTarget } from '../features/map/NavigationScreen';
 import type { LatLng, RouteData } from '../features/map/routeNav';
 import { openStreetView, useGoogleMap, useMapLayers } from '../features/map/useGoogleMap';
 import { useRoutes } from '../features/map/useRoutes';
@@ -63,7 +63,9 @@ export function MapPage() {
   const departAt = departValid && !departPast ? departDate!.toISOString() : undefined;
 
   const [selected, setSelected] = useState(0);
-  const [navOpen, setNavOpen] = useState(false);
+  // A running navigation is a snapshot: it must not change or vanish when the planning screen behind it does.
+  const [nav, setNav] = useState<{ route: RouteData; destination: NavTarget; mode: 'driving' | 'walking'; avoid: { tolls: boolean; highways: boolean; ferries: boolean } } | null>(null);
+  const navOpen = nav !== null;
   const { routes, loading: calculating, error: routeError, retryable, retry } = useRoutes(
     view === 'directions' ? from.coord : null,
     view === 'directions' ? to.coord : null,
@@ -362,7 +364,10 @@ export function MapPage() {
             departPast={departPast}
             canStart={canStart}
             startHint={startHint}
-            onStart={() => setNavOpen(true)}
+            onStart={() => {
+              unlockSpeech();
+              if (route && to.coord) setNav({ route, destination: { label: to.label, coord: to.coord }, mode: travelMode, avoid });
+            }}
             onShare={shareRoute}
             onBack={() => setView('explore')}
             trip={trip}
@@ -404,17 +409,7 @@ export function MapPage() {
       )}
 
       {/* In-app turn-by-turn navigation */}
-      {navOpen && route && from.coord && to.coord && (
-        <NavigationScreen
-          origin={{ label: from.label, coord: from.coord }}
-          destination={{ label: to.label, coord: to.coord }}
-          mode={travelMode}
-          route={route}
-          startWithGps={wp.fromIsGps}
-          avoid={avoid}
-          onExit={() => setNavOpen(false)}
-        />
-      )}
+      {nav && <NavigationScreen destination={nav.destination} mode={nav.mode} route={nav.route} avoid={nav.avoid} onExit={() => setNav(null)} />}
     </div>
   );
 }
