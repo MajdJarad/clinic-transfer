@@ -4,7 +4,7 @@ import { api } from '../api';
 import { useI18n } from '../i18n';
 import { StatusPill } from '../components/ui';
 import { driverStatusKeys } from '../labels';
-import { ageLabel, FRESHNESS_COLOR, freshnessOf, type Freshness } from '../features/tracking/freshness';
+import { ageLabel, FRESHNESS_COLOR, freshnessOf, isCurrent, type Freshness } from '../features/tracking/freshness';
 import { plateLetters } from '../features/tracking/plate';
 import { TrackingMap, type TrackingMapHandle } from '../features/tracking/TrackingMap';
 import type { TrackingDriver } from '../types';
@@ -28,6 +28,7 @@ export function Tracking() {
   const [followId, setFollowId] = useState<string | null>(null);
   const [fitSignal, setFitSignal] = useState(0);
   const [traffic, setTraffic] = useState(false);
+  const [showStale, setShowStale] = useState(false); // last known points of drivers who went quiet
   const [panelOpen, setPanelOpen] = useState(() => window.innerWidth >= 768);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const focused = useRef(false);
@@ -64,8 +65,10 @@ export function Tracking() {
   useEffect(() => {
     const want = params.get('driver');
     if (!want || focused.current || !loaded) return;
-    if (drivers.some((d) => d.id === want && d.lat != null)) {
+    const target = drivers.find((d) => d.id === want && d.lat != null && d.lng != null);
+    if (target) {
       focused.current = true;
+      if (!isCurrent(target)) setShowStale(true); // an alert from a driver who went quiet: show where he was last heard
       setSelectedId(want);
       setFollowId(want);
     }
@@ -80,6 +83,12 @@ export function Tracking() {
     () => [...view].sort((a, b) => RANK[freshnessOf(a.ageSeconds)] - RANK[freshnessOf(b.ageSeconds)] || a.name.localeCompare(b.name)),
     [view],
   );
+  // Only current positions are drawn (a driver who has gone quiet is not "parked" where he was last heard).
+  const mapDrivers = useMemo(
+    () => view.filter((d) => (showStale ? d.lat != null && d.lng != null : isCurrent(d))),
+    [view, showStale],
+  );
+  const staleCount = useMemo(() => view.filter((d) => d.lat != null && d.lng != null && !isCurrent(d)).length, [view]);
   const counts = useMemo(() => {
     const c: Record<Freshness, number> = { live: 0, recent: 0, stale: 0, none: 0 };
     view.forEach((d) => c[freshnessOf(d.ageSeconds)]++);
@@ -97,7 +106,7 @@ export function Tracking() {
     >
       <TrackingMap
         ref={mapApi}
-        drivers={view}
+        drivers={mapDrivers}
         selectedId={selectedId}
         followId={followId}
         onSelect={(id) => {
@@ -144,6 +153,11 @@ export function Tracking() {
         <button type="button" onClick={() => setTraffic((v) => !v)} className={`${btn} ${traffic ? '!bg-amber-600 !text-white' : ''}`}>
           🚦 المرور
         </button>
+        {staleCount > 0 && (
+          <button type="button" onClick={() => setShowStale((v) => !v)} className={`${btn} ${showStale ? '!bg-slate-600 !text-white' : ''}`} data-testid="toggle-stale">
+            🕘 آخر المواقع المعروفة ({staleCount})
+          </button>
+        )}
         <button type="button" onClick={() => setIsFullscreen((v) => !v)} className={btn} data-testid="tracking-fullscreen">
           {isFullscreen ? '🗗 تصغير' : '⛶ ملء الشاشة'}
         </button>
@@ -169,12 +183,13 @@ export function Tracking() {
             sorted.map((d) => {
               const level = freshnessOf(d.ageSeconds);
               const located = d.lat != null && d.lng != null;
+              const onMap = located && (showStale || isCurrent(d)); // is his car actually drawn?
               const onTrip = d.activeTrip;
               return (
                 <div
                   key={d.id}
                   data-testid={`driver-row-${d.id}`}
-                  onClick={() => located && (setSelectedId(d.id), setFollowId(null))}
+                  onClick={() => onMap && (setSelectedId(d.id), setFollowId(null))}
                   className={`cursor-pointer rounded-xl border p-2.5 transition ${selectedId === d.id ? 'border-blue-500 bg-blue-500/5' : 'border-border hover:border-blue-300'}`}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -192,6 +207,16 @@ export function Tracking() {
                     {LEVEL_TEXT[level]} • {ageLabel(d.ageSeconds)}
                     {level === 'live' && d.speedKmh != null && d.speedKmh >= 1 ? ` • ${Math.round(d.speedKmh)} كم/س` : ''}
                   </p>
+                  {located && isCurrent(d) && (
+                    <p className="mt-0.5 text-[10px] font-semibold text-muted" data-testid={`driver-source-${d.id}`}>
+                      {d.source === 'traccar' ? '📡 من جهاز التتبع' : '📱 من هاتف السائق (GPS)'}
+                    </p>
+                  )}
+                  {located && !isCurrent(d) && (
+                    <p className="mt-0.5 text-[11px] font-semibold text-muted" data-testid={`driver-stale-${d.id}`}>
+                      {showStale ? '🕘 آخر موقع معروف (قديم)' : '🕘 آخر موقع معروف — غير ظاهر على الخريطة لأنه قديم'}
+                    </p>
+                  )}
                   {located && (
                     <p className="mt-0.5 text-[10px] text-muted" dir="ltr" data-testid={`driver-pos-${d.id}`}>
                       {(d.lat as number).toFixed(5)}, {(d.lng as number).toFixed(5)}
@@ -206,7 +231,7 @@ export function Tracking() {
                   <div className="mt-2 flex gap-2">
                     <button
                       type="button"
-                      disabled={!located}
+                      disabled={!onMap}
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedId(d.id);
@@ -219,6 +244,20 @@ export function Tracking() {
                     >
                       {followId === d.id ? '👁️ يتم التتبع' : '👁️ تتبّع'}
                     </button>
+                    {located && !isCurrent(d) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void api.drivers.clearLocation(d.id).then(() => setDrivers((all) => all.map((x) => (x.id === d.id ? { ...x, lat: null, lng: null, lastSeen: null, ageSeconds: null } : x))));
+                        }}
+                        className="rounded-lg border border-border bg-surface2 px-2.5 py-1 text-[11px] font-bold text-fg"
+                        title="مسح آخر موقع معروف"
+                        data-testid={`clear-${d.id}`}
+                      >
+                        🗑️ مسح
+                      </button>
+                    )}
                     {d.phone && (
                       <a href={`tel:${d.phone}`} onClick={(e) => e.stopPropagation()} className="rounded-lg border border-border bg-surface2 px-3 py-1 text-[11px] font-bold text-fg">
                         📞

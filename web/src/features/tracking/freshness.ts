@@ -27,3 +27,10 @@ export const FRESHNESS_COLOR: Record<Freshness, string> = {
   stale: '#6b7280',
   none: '#6b7280',
 };
+
+/** Only a position that is still current is drawn as a car: the last-known point of a driver who has
+ *  gone quiet would look like a car parked somewhere it may no longer be. */
+export function isCurrent(d: { lat: number | null; lng: number | null; ageSeconds: number | null }): boolean {
+  const f = freshnessOf(d.ageSeconds);
+  return d.lat != null && d.lng != null && (f === 'live' || f === 'recent');
+}

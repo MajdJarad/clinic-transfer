@@ -153,6 +153,7 @@ export const api = {
         body: JSON.stringify(p),
       }),
     live: () => request<TrackingDriver[]>('/drivers/tracking/live'),
+    clearLocation: (id: string) => request<void>(`/drivers/${id}/location`, { method: 'DELETE' }),
     linkTraccar: (id: string, traccarDeviceId: string | null) =>
       request<Driver>(`/drivers/${id}/traccar`, {
         method: 'PATCH',
