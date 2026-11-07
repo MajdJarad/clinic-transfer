@@ -352,7 +352,7 @@ export function MapScreen({ className, trip: driverTrip, onStartTrip }: MapScree
   // At arrival the driver can tell the patient the car is here without ever seeing the number (the server
   // sends it). The trip's status is not tapped: it follows the car's position.
   const secondaryAction =
-    driverTrip && driverMode && driverTrip.status !== 'PICKED_UP'
+    driverTrip && driverMode && ['ASSIGNED', 'EN_ROUTE', 'ARRIVED'].includes(driverTrip.status)
       ? {
           label: '📨 إشعار المريض بوصول السيارة',
           run: async () => {
