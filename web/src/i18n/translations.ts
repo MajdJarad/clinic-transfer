@@ -17,7 +17,7 @@ type Dict = Record<string, string>;
 
 const ar: Dict = {
   'common.app': 'نقل المرضى',
-  'common.clinic': 'عيادة النخبة الطبية',
+  'common.clinic': 'MEDICO CLINIC',
   'common.save': 'حفظ',
   'common.cancel': 'إلغاء',
   'common.close': 'إغلاق',
@@ -315,7 +315,7 @@ const ar: Dict = {
 
 const en: Dict = {
   'common.app': 'Patient Transfer',
-  'common.clinic': 'Elite Medical Clinic',
+  'common.clinic': 'MEDICO CLINIC',
   'common.save': 'Save',
   'common.cancel': 'Cancel',
   'common.close': 'Close',
@@ -613,7 +613,7 @@ const en: Dict = {
 
 const tr: Dict = {
   'common.app': 'Hasta Transferi',
-  'common.clinic': 'Elit Tıp Kliniği',
+  'common.clinic': 'MEDICO CLINIC',
   'common.save': 'Kaydet',
   'common.cancel': 'İptal',
   'common.close': 'Kapat',
