@@ -219,7 +219,7 @@ export function CalendarPage() {
             </button>
           ))}
         </div>
-        <Button size="sm" onClick={() => openCreate(view === 'month' ? anchor : days[0])}>
+        <Button size="sm" className="lg:hidden" onClick={() => openCreate(view === 'month' ? anchor : days[0])}>
           {t('calendar.newTrip')}
         </Button>
       </div>

@@ -101,7 +101,7 @@ export function Tracking() {
   return (
     <div
       className={`w-full overflow-hidden bg-slate-900 ${
-        isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : 'relative h-[calc(100dvh-10rem)] rounded-2xl sm:h-[calc(100vh-6.5rem)]'
+        isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : 'relative h-[calc(100dvh-10rem-var(--chrome-extra,0px))] rounded-2xl sm:h-[calc(100vh-6.5rem-var(--chrome-extra,0px))]'
       }`}
       data-testid="tracking-screen"
     >

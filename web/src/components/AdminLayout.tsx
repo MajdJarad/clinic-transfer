@@ -40,7 +40,6 @@ const NAV: NavItem[] = [
 export function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <AlertsProvider>
-      <AlertsBanner />
       <LayoutInner>{children}</LayoutInner>
     </AlertsProvider>
   );
@@ -50,7 +49,7 @@ function Badge() {
   const { openCount } = useAlerts();
   if (!openCount) return null;
   return (
-    <span className="ms-auto grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1.5 text-[11px] font-black text-white" data-testid="alerts-badge">
+    <span className="ms-auto grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1.5 text-[11px] font-semibold text-white" data-testid="alerts-badge">
       {openCount}
     </span>
   );
@@ -63,7 +62,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
   const items = NAV.filter((n) => !n.adminOnly || user?.role === 'ADMIN');
 
   const linkClass = (isActive: boolean) =>
-    `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+    `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
       isActive
         ? 'bg-accent-soft text-accent-soft-fg'
         : 'text-muted hover:bg-surface2 hover:text-fg'
@@ -72,17 +71,17 @@ function LayoutInner({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-full">
       <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col border-e border-border bg-surface md:flex">
-        <div className="flex items-center gap-3 border-b border-border px-5 py-5">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 text-lg font-bold text-white shadow-sm">
+        <div className="flex h-14 items-center gap-3 border-b border-border px-5">
+          <div className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-sm font-semibold text-white">
             {t('common.app').charAt(0)}
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold text-fg">{t('common.app')}</p>
+          <div className="min-w-0 leading-tight">
+            <p className="truncate text-sm font-semibold text-fg">{t('common.app')}</p>
             <p className="truncate text-xs text-muted">{clinicName || t('common.clinic')}</p>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+        <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
           {items.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.to === '/'} className={({ isActive }) => linkClass(isActive)}>
               {item.icon}
@@ -93,8 +92,8 @@ function LayoutInner({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="border-t border-border p-3">
-          <div className="mb-2 flex items-center gap-3 rounded-xl bg-surface2 px-3 py-2.5">
-            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-600 text-sm font-bold text-white">
+          <div className="mb-1 flex items-center gap-3 rounded-lg px-2 py-2">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-semibold text-accent-soft-fg">
               {user?.name?.charAt(0) ?? '?'}
             </div>
             <div className="min-w-0">
@@ -104,7 +103,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
           </div>
           <button
             onClick={logout}
-            className="w-full rounded-xl px-3 py-2 text-start text-sm font-medium text-red-600 transition hover:bg-red-50 dark:hover:bg-red-500/10"
+            className="w-full rounded-lg px-3 py-1.5 text-start text-sm text-muted transition hover:bg-surface2 hover:text-red-600"
           >
             {t('common.logout')}
           </button>
@@ -112,12 +111,12 @@ function LayoutInner({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex min-h-full flex-col md:ps-64">
-        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-border bg-surface/85 px-4 py-3 backdrop-blur md:px-6">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-border bg-surface/90 px-4 backdrop-blur md:px-6">
           <div className="flex items-center gap-2.5 md:hidden">
-            <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-brand-500 to-brand-700 text-sm font-bold text-white">
+            <div className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-sm font-semibold text-white">
               {t('common.app').charAt(0)}
             </div>
-            <span className="text-sm font-bold text-fg">{t('common.app')}</span>
+            <span className="text-sm font-semibold text-fg">{t('common.app')}</span>
           </div>
           <div className="hidden text-sm text-muted md:block">{t('nav.subtitle')}</div>
           <div className="flex items-center gap-2">
@@ -150,6 +149,8 @@ function LayoutInner({ children }: { children: ReactNode }) {
             </NavLink>
           ))}
         </nav>
+
+        <AlertsBanner />
 
         <main className="flex-1 p-4 md:p-6">
           <EphemeralNotice />

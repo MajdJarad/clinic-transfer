@@ -9,10 +9,14 @@ import type { DashboardSummary, TrackingDriver, Trip } from '../types';
 import { WhatsAppModal } from '../components/WhatsAppModal';
 
 function StatCard({ label, value, sub, tone }: { label: string; value: number; sub: string; tone: string }) {
+  // The number stays neutral; only a small dot carries the colour of the figure's meaning.
   return (
     <Card className="p-4">
-      <p className="text-sm text-muted">{label}</p>
-      <p className={`mt-1 text-3xl font-bold ${tone}`}>{value}</p>
+      <p className="flex items-center gap-2 text-sm text-muted">
+        <span className={`h-2 w-2 rounded-full bg-current ${tone}`} aria-hidden />
+        {label}
+      </p>
+      <p className="mt-2 text-3xl font-semibold tracking-tight text-fg">{value}</p>
       <p className="mt-1 text-xs text-muted">{sub}</p>
     </Card>
   );
@@ -74,7 +78,7 @@ export function Dashboard() {
           label={t('dashboard.vehiclesInService')}
           value={(summary?.vehicles.total ?? 0) - (summary?.vehicles.inMaintenance ?? 0)}
           sub={t('dashboard.inMaintenance', { count: summary?.vehicles.inMaintenance ?? 0 })}
-          tone="text-fg"
+          tone="text-slate-400"
         />
         <StatCard
           label={t('dashboard.openMaintenance')}

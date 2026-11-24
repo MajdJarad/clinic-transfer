@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { tint } from '../../lib/colors';
 import type { Trip } from '../../types';
 import { useI18n } from '../../i18n';
 import { weekdayShortKeys } from '../../labels';
@@ -270,19 +271,20 @@ export function TimeGridView({
                       <div
                         key={trip.id}
                         onPointerDown={(e) => startDrag(e, trip)}
-                        className={`absolute cursor-pointer overflow-hidden rounded-md px-1.5 py-0.5 text-[11px] leading-tight text-white shadow-sm ${isDragging ? 'z-30 opacity-90' : 'z-10'}`}
+                        className={`absolute cursor-pointer overflow-hidden rounded-md border-s-[3px] px-2 py-1 text-xs leading-tight text-fg transition-shadow hover:shadow-md ${isDragging ? 'z-30 opacity-90 shadow-lg' : 'z-10'}`}
                         style={{
                           top,
                           height,
                           left: `calc(${leftPct}% + 2px)`,
                           width: `calc(${widthPct}% - 4px)`,
-                          backgroundColor: color,
+                          backgroundColor: tint(color, 18),
+                          borderInlineStartColor: color,
                           transform: translate,
                         }}
                         title={`${trip.patientName} - ${formatTime(new Date(trip.scheduledAt), intl)}`}
                       >
                         <div className="truncate font-medium">{trip.patientName}</div>
-                        <div className="truncate text-[10px] text-white/80">
+                        <div className="truncate text-[10px] text-muted">
                           {formatTime(new Date(trip.scheduledAt), intl)}
                         </div>
                       </div>

@@ -31,18 +31,18 @@ export function Login() {
   };
 
   return (
-    <div className="relative grid min-h-full place-items-center bg-gradient-to-br from-slate-900 via-slate-900 to-brand-900 p-4">
+    <div className="relative grid min-h-full place-items-center bg-bg p-4">
       <div className="absolute end-4 top-4 flex items-center gap-2">
         <LanguageSelect />
         <ThemeToggle />
       </div>
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-surface p-6 shadow-2xl">
-        <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-2xl font-bold text-white shadow-lg">
+      <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-7 shadow-lg">
+        <div className="mb-7 text-center">
+          <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-brand-600 text-xl font-semibold text-white">
             {t('common.app').charAt(0)}
           </div>
-          <h1 className="text-xl font-bold text-fg">{t('login.title')}</h1>
-          <p className="text-sm text-muted">{clinicName || t('common.clinic')}</p>
+          <h1 className="text-lg font-semibold text-fg">{t('login.title')}</h1>
+          <p className="mt-0.5 text-sm text-muted">{clinicName || t('common.clinic')}</p>
         </div>
         <form onSubmit={submit} className="space-y-4">
           {expired && (
@@ -74,8 +74,8 @@ export function Login() {
             {t('login.submit')}
           </Button>
         </form>
-        <div className="mt-6 rounded-lg bg-surface2 p-3 text-xs text-muted">
-          <p className="mb-1 font-medium text-fg">{t('login.demo')}</p>
+        <div className="mt-6 rounded-lg border border-dashed border-border p-3 text-xs text-muted" dir="ltr">
+          <p className="mb-1 font-medium text-fg" dir="auto">{t('login.demo')}</p>
           <p>admin@clinic.com / admin123</p>
           <p>coordinator@clinic.com / coord123</p>
           <p>driver1@clinic.com / driver123</p>

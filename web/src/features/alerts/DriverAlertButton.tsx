@@ -61,12 +61,18 @@ export function DriverAlertButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`rounded-lg border px-2.5 py-1 text-xs font-black text-white shadow ${
-          active ? 'animate-pulse border-red-300 bg-red-700' : 'border-red-400/60 bg-red-600 hover:bg-red-700'
+        className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+          active
+            ? 'border-red-600 bg-red-600 text-white'
+            : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-500/40 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/25'
         }`}
         data-testid="alert-button"
       >
-        {active ? '🚨 أُرسل' : '🚨 إنذار'}
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M12 3 2 21h20L12 3z" />
+          <path d="M12 10v5M12 18h.01" />
+        </svg>
+        {active ? 'أُرسل' : 'إنذار'}
       </button>
 
       <Modal open={open} title="🚨 إنذار عاجل للمنسق" onClose={() => setOpen(false)}>
