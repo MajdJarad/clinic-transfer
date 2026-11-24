@@ -1,4 +1,5 @@
 import type { Trip } from '../../types';
+import { tint } from '../../lib/colors';
 import { useI18n } from '../../i18n';
 import { weekdayShortKeys } from '../../labels';
 import { addDays, formatTime, isSameDay, startOfMonth, startOfWeek } from '../../lib/date';
@@ -44,7 +45,7 @@ export function MonthView({ month, events, colorFor, onDayClick, onEventClick, o
               <button
                 onClick={() => onDayClick(day)}
                 className={`mb-0.5 grid h-6 w-6 shrink-0 place-items-center self-start rounded-full text-xs ${
-                  isToday ? 'bg-brand-600 font-bold text-white' : inMonth ? 'text-fg hover:bg-surface2' : 'text-muted/60'
+                  isToday ? 'bg-brand-600 font-semibold text-white' : inMonth ? 'text-fg hover:bg-surface2' : 'text-muted/60'
                 }`}
               >
                 {day.getDate()}
@@ -54,10 +55,9 @@ export function MonthView({ month, events, colorFor, onDayClick, onEventClick, o
                   <button
                     key={t.id}
                     onClick={() => onEventClick(t)}
-                    className="flex items-center gap-1 truncate rounded px-1 py-0.5 text-start text-[10px] font-medium text-white"
-                    style={{ backgroundColor: colorFor(t) }}
+                    className="flex items-center gap-1 truncate rounded border-s-2 px-1.5 py-0.5 text-start text-[10px] font-medium text-fg"
+                    style={{ backgroundColor: tint(colorFor(t), 16), borderInlineStartColor: colorFor(t) }}
                   >
-                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-white/70" />
                     <span className="truncate">{formatTime(new Date(t.scheduledAt), intl)} {t.patientName}</span>
                   </button>
                 ))}

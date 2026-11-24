@@ -158,10 +158,10 @@ export function DriverApp() {
   };
 
   const colorFor = useCallback((trip: Trip) => {
-    if (trip.status === 'COMPLETED') return '#059669'; // Green
-    if (trip.status === 'EN_ROUTE' || trip.status === 'ARRIVED') return '#2563eb'; // Blue
-    if (trip.status === 'CANCELLED') return '#9ca3af'; // Gray
-    return '#d97706'; // Amber for scheduled / assigned
+    if (trip.status === 'COMPLETED') return '#3f8f6b'; // Calm green
+    if (trip.status === 'EN_ROUTE' || trip.status === 'ARRIVED') return '#2f7f9a'; // Teal blue
+    if (trip.status === 'CANCELLED') return '#98a2b3'; // Gray
+    return '#b8903a'; // Ochre for scheduled / assigned
   }, []);
 
   const visibleCalTrips = useMemo(() => {
@@ -234,69 +234,60 @@ export function DriverApp() {
   return (
     <div className={activeTab === 'navigation' ? 'h-[100dvh] overflow-hidden bg-bg' : 'min-h-screen bg-bg pb-20 md:pb-10'}>
       {/* ─── Driver Top Header ─── */}
-      <header ref={headerRef} className="sticky top-0 z-30 bg-brand-900 px-4 py-3 text-white shadow-md">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 font-bold text-white shadow-sm">
-              🚗
-            </div>
-            <div className="min-w-0">
-              <h1 className="truncate text-sm font-bold">{user?.name}</h1>
-              <p className="truncate text-[11px] text-brand-200">
-                {driver?.vehicle ? `${driver.vehicle.make} ${driver.vehicle.model} • ${driver.vehicle.plate}` : 'بدون سيارة مسندة'}
-              </p>
-            </div>
+      <header ref={headerRef} className="sticky top-0 z-30 border-b border-border bg-surface px-4 pb-2 pt-3">
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-base font-semibold text-accent-soft-fg">
+            {user?.name?.charAt(0) ?? '؟'}
+          </div>
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-sm font-semibold text-fg">{user?.name}</h1>
+            <p className="mt-0.5 truncate text-xs text-muted">
+              {driver?.vehicle ? `${driver.vehicle.make} ${driver.vehicle.model} • ${driver.vehicle.plate}` : 'بدون سيارة مسندة'}
+            </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* The phone shares its position by itself, always: nothing to press. Only a problem is shown. */}
-            {share.state === 'live' ? (
-              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-400" title="موقعك يصل للمنسق مباشرة" data-testid="share-dot" />
-            ) : (
-              <span className="rounded-lg border border-amber-500/40 bg-amber-500/20 px-2 py-1 text-[11px] font-bold text-amber-200" data-testid="share-problem">
-                {share.state === 'denied'
-                  ? '⚠️ فعّل إذن الموقع'
-                  : share.state === 'unavailable'
-                    ? '⚠️ الموقع غير متاح'
-                    : share.state === 'error'
-                      ? '⚠️ موقعك لا يصل للمنسق'
-                      : '📡 …'}
-              </span>
-            )}
-            <DriverAlertButton />
-            {/* Read-Only Status Display (Set by Admin/Coordinator) */}
-            <span
-              className={`rounded-lg px-2.5 py-1 text-xs font-bold border flex items-center gap-1.5 ${
-                driver?.status === 'AVAILABLE'
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                  : driver?.status === 'ON_TRIP'
-                  ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                  : 'bg-slate-500/20 text-slate-300 border-slate-500/40'
-              }`}
-              title="الحالة محددة من قبل الإدارة والمنسق"
-            >
-              <span className={`h-2 w-2 rounded-full ${
-                driver?.status === 'AVAILABLE'
-                  ? 'bg-emerald-400 animate-pulse'
-                  : driver?.status === 'ON_TRIP'
-                  ? 'bg-blue-400'
-                  : 'bg-slate-400'
-              }`} />
-              <span>{driver?.status ? t(driverStatusKeys[driver.status]) : 'متاح'}</span>
+          {/* The phone shares its position by itself, always: nothing to press. Only a problem is shown. */}
+          {share.state === 'live' ? (
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500 ring-4 ring-emerald-500/15" title="موقعك يصل للمنسق مباشرة" data-testid="share-dot" />
+          ) : (
+            <span className="shrink-0 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200" data-testid="share-problem">
+              {share.state === 'denied'
+                ? '⚠️ فعّل إذن الموقع'
+                : share.state === 'unavailable'
+                  ? '⚠️ الموقع غير متاح'
+                  : share.state === 'error'
+                    ? '⚠️ موقعك لا يصل للمنسق'
+                    : '📡 …'}
             </span>
+          )}
+          <DriverAlertButton />
+        </div>
 
-            <ThemeToggle />
-            <button
-              onClick={logout}
-              className="rounded-lg bg-white/10 px-2.5 py-1 text-xs text-white/90 hover:bg-white/20"
-            >
+        <div className="mt-2.5 flex items-center justify-between gap-2">
+          {/* Read-only status (set by the admin / coordinator) */}
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+              driver?.status === 'ON_TRIP'
+                ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300'
+                : driver?.status === 'OFFLINE'
+                  ? 'border-border bg-surface2 text-muted'
+                  : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300'
+            }`}
+            title="الحالة محددة من قبل الإدارة والمنسق"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+            {driver?.status ? t(driverStatusKeys[driver.status]) : 'متاح'}
+          </span>
+          <div className="flex items-center gap-1.5">
+            <ThemeToggle className="!h-8 !w-8 !border-transparent !bg-transparent" />
+            <button onClick={logout} className="rounded-lg px-2.5 py-1 text-xs font-medium text-muted transition hover:bg-surface2 hover:text-fg">
               خروج
             </button>
           </div>
         </div>
 
-        {/* ─── Top Tabs ─── */}
-        <div className="mt-2.5 flex gap-2 border-t border-white/10 pt-2">
+        {/* ─── Tabs (desktop; on a phone the bottom bar does this) ─── */}
+        <div className="mt-2.5 hidden gap-1 rounded-lg bg-surface2 p-1 md:flex">
           {[
             { id: 'calendar', label: 'التقويم', icon: '📅' },
             { id: 'navigation', label: 'الملاحة', icon: '🧭' },
@@ -305,10 +296,8 @@ export function DriverApp() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as DriverTab)}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition ${
-                activeTab === tab.id
-                  ? 'bg-white text-brand-900 shadow-md'
-                  : 'bg-white/10 text-white/80 hover:bg-white/20'
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition ${
+                activeTab === tab.id ? 'bg-surface text-accent-soft-fg shadow-sm' : 'text-muted hover:text-fg'
               }`}
             >
               <span>{tab.icon}</span>
@@ -569,7 +558,7 @@ export function DriverApp() {
       </main>
 
       {/* ─── Bottom Navigation Bar (Mobile Friendly) ─── */}
-      <nav ref={navBarRef} className="fixed bottom-0 inset-x-0 z-40 flex items-center justify-around border-t border-border bg-surface/95 backdrop-blur-md py-2 shadow-2xl md:hidden">
+      <nav ref={navBarRef} className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-border bg-surface py-1.5 md:hidden">
         {[
           { id: 'calendar', label: 'التقويم', icon: '📅' },
           { id: 'navigation', label: 'الملاحة', icon: '🧭' },
@@ -578,8 +567,8 @@ export function DriverApp() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as DriverTab)}
-            className={`flex flex-col items-center gap-1 px-4 py-1 text-xs font-bold transition ${
-              activeTab === tab.id ? 'text-brand-600 scale-105' : 'text-muted hover:text-fg'
+            className={`flex flex-1 flex-col items-center gap-0.5 py-1 text-[11px] font-medium transition ${
+              activeTab === tab.id ? 'text-brand-600' : 'text-muted hover:text-fg'
             }`}
           >
             <span className="text-lg">{tab.icon}</span>

@@ -21,7 +21,7 @@ export function Card({ children, className = '', 'data-testid': testId }: { chil
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-3">
-      <h2 className="text-lg font-bold text-fg">{children}</h2>
+      <h2 className="text-base font-semibold text-fg">{children}</h2>
       {action}
     </div>
   );
@@ -43,10 +43,10 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const variants: Record<string, string> = {
-    primary: 'bg-brand-600 text-white hover:bg-brand-700 disabled:bg-brand-300',
-    secondary: 'bg-surface text-fg border border-border hover:bg-surface2',
-    danger: 'bg-red-600 text-white hover:bg-red-700',
-    success: 'bg-emerald-600 text-white hover:bg-emerald-700',
+    primary: 'bg-brand-600 text-white shadow-sm hover:bg-brand-700 disabled:bg-brand-300',
+    secondary: 'bg-surface text-fg border border-border shadow-sm hover:bg-surface2',
+    danger: 'bg-red-600 text-white shadow-sm hover:bg-red-700',
+    success: 'bg-emerald-600 text-white shadow-sm hover:bg-emerald-700',
     ghost: 'bg-transparent text-muted hover:bg-surface2 hover:text-fg',
   };
   const sizes: Record<string, string> = {
@@ -76,7 +76,7 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-sm font-medium text-muted">{label}</span>
+      <span className="mb-1.5 block text-sm font-medium text-fg/80">{label}</span>
       {children}
       {hint && <span className="mt-1 block text-xs text-muted opacity-80">{hint}</span>}
     </label>
@@ -84,7 +84,7 @@ export function Field({
 }
 
 const fieldClass =
-  'w-full rounded-lg border border-border bg-surface2 px-3 py-2 text-sm text-fg outline-none transition placeholder:text-muted/60 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:focus:ring-brand-500/30';
+  'w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg outline-none transition placeholder:text-muted/60 hover:border-slate-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-100 dark:hover:border-slate-600 dark:focus:ring-brand-500/30';
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`${fieldClass} ${props.className ?? ''}`} />;
@@ -121,13 +121,13 @@ export function Modal({
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/50 p-4 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4" onClick={onClose}>
       <div
-        className={`mt-10 w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} rounded-2xl border border-border bg-surface shadow-xl`}
+        className={`mt-10 w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} rounded-xl border border-border bg-surface shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <h3 className="text-base font-bold text-fg">{title}</h3>
+          <h3 className="text-base font-semibold text-fg">{title}</h3>
           <button
             onClick={onClose}
             className="grid h-8 w-8 place-items-center rounded-lg text-xl leading-none text-muted transition hover:bg-surface2 hover:text-fg"
@@ -172,7 +172,8 @@ const statusTone: Record<string, keyof typeof statusColors> = {
 export function StatusPill({ status, label }: { status: string; label: string }) {
   const tone = statusColors[statusTone[status] ?? 'slate'];
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${tone}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${tone}`}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" aria-hidden />
       {label}
     </span>
   );
@@ -191,8 +192,8 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-xl font-bold text-fg">{title}</h1>
-        {subtitle && <p className="text-sm text-muted">{subtitle}</p>}
+        <h1 className="text-xl font-semibold text-fg">{title}</h1>
+        {subtitle && <p className="mt-0.5 text-sm text-muted">{subtitle}</p>}
       </div>
       {action}
     </div>
