@@ -5,6 +5,7 @@ import { useClinicName } from '../config';
 import { useI18n } from '../i18n';
 import { LanguageSelect, ThemeToggle } from '../components/Controls';
 import { Button, ErrorText, Field, Input } from '../components/ui';
+import { BRAND_NAME, Logo } from '../components/Logo';
 
 export function Login() {
   const { login, expired } = useAuth();
@@ -36,13 +37,14 @@ export function Login() {
         <LanguageSelect />
         <ThemeToggle />
       </div>
-      <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-7 shadow-lg">
-        <div className="mb-7 text-center">
-          <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-brand-600 text-xl font-semibold text-white">
-            {t('common.app').charAt(0)}
-          </div>
-          <h1 className="text-lg font-semibold text-fg">{t('login.title')}</h1>
-          <p className="mt-0.5 text-sm text-muted">{clinicName || t('common.clinic')}</p>
+      <div className="w-full max-w-sm overflow-hidden rounded-xl border border-border bg-surface shadow-lg">
+        <div className="flex justify-center px-6 pb-2 pt-9" dir="ltr">
+          <Logo className="h-14 w-auto" />
+        </div>
+        <div className="p-7">
+        <div className="mb-6 text-center">
+          <h1 className="text-lg font-semibold tracking-wide text-fg">{clinicName || BRAND_NAME}</h1>
+          <p className="mt-0.5 text-sm text-muted">{t('login.title')}</p>
         </div>
         <form onSubmit={submit} className="space-y-4">
           {expired && (
@@ -79,6 +81,7 @@ export function Login() {
           <p>admin@clinic.com / admin123</p>
           <p>coordinator@clinic.com / coord123</p>
           <p>driver1@clinic.com / driver123</p>
+        </div>
         </div>
       </div>
     </div>

@@ -1,8 +1,8 @@
 import { type ReactNode } from 'react';
 import { EphemeralNotice } from './EphemeralNotice';
+import { Logo } from './Logo';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { useClinicName } from '../config';
 import { useI18n } from '../i18n';
 import { roleKeys } from '../labels';
 import { LanguageSelect, ThemeToggle } from './Controls';
@@ -58,7 +58,6 @@ function Badge() {
 function LayoutInner({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { t } = useI18n();
-  const clinicName = useClinicName();
   const items = NAV.filter((n) => !n.adminOnly || user?.role === 'ADMIN');
 
   const linkClass = (isActive: boolean) =>
@@ -71,14 +70,9 @@ function LayoutInner({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-full">
       <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col border-e border-border bg-surface md:flex">
-        <div className="flex h-14 items-center gap-3 border-b border-border px-5">
-          <div className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-sm font-semibold text-white">
-            {t('common.app').charAt(0)}
-          </div>
-          <div className="min-w-0 leading-tight">
-            <p className="truncate text-sm font-semibold text-fg">{t('common.app')}</p>
-            <p className="truncate text-xs text-muted">{clinicName || t('common.clinic')}</p>
-          </div>
+        {/* Brand: the horizontal logo (emblem + MEDICO, CLINIC under it) */}
+        <div className="flex h-14 items-center border-b border-border px-5" dir="ltr">
+          <Logo className="h-8 w-auto" />
         </div>
 
         <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
@@ -112,11 +106,8 @@ function LayoutInner({ children }: { children: ReactNode }) {
 
       <div className="flex min-h-full flex-col md:ps-64">
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-border bg-surface/90 px-4 backdrop-blur md:px-6">
-          <div className="flex items-center gap-2.5 md:hidden">
-            <div className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-sm font-semibold text-white">
-              {t('common.app').charAt(0)}
-            </div>
-            <span className="text-sm font-semibold text-fg">{t('common.app')}</span>
+          <div className="md:hidden" dir="ltr">
+            <Logo className="h-7 w-auto" />
           </div>
           <div className="hidden text-sm text-muted md:block">{t('nav.subtitle')}</div>
           <div className="flex items-center gap-2">

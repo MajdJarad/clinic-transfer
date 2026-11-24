@@ -4,6 +4,7 @@ import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
 import { useLocationSharing } from '../features/tracking/useLocationSharing';
 import { DriverAlertButton } from '../features/alerts/DriverAlertButton';
+import { Logo } from '../components/Logo';
 import { MapScreen } from './MapPage';
 import { ThemeToggle } from '../components/Controls';
 import {
@@ -234,8 +235,12 @@ export function DriverApp() {
   return (
     <div className={activeTab === 'navigation' ? 'h-[100dvh] overflow-hidden bg-bg' : 'min-h-screen bg-bg pb-20 md:pb-10'}>
       {/* ─── Driver Top Header ─── */}
-      <header ref={headerRef} className="sticky top-0 z-30 border-b border-border bg-surface px-4 pb-2 pt-3">
-        <div className="flex items-center gap-3">
+      <header ref={headerRef} className="sticky top-0 z-30 border-b border-border bg-surface pb-2">
+        {/* Brand: the horizontal logo */}
+        <div className="px-4 pt-3" dir="ltr">
+          <Logo className="h-7 w-auto" />
+        </div>
+        <div className="flex items-center gap-3 px-4 pt-2.5">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-base font-semibold text-accent-soft-fg">
             {user?.name?.charAt(0) ?? '؟'}
           </div>
@@ -263,7 +268,7 @@ export function DriverApp() {
           <DriverAlertButton />
         </div>
 
-        <div className="mt-2.5 flex items-center justify-between gap-2">
+        <div className="mt-2.5 flex items-center justify-between gap-2 px-4">
           {/* Read-only status (set by the admin / coordinator) */}
           <span
             className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${
@@ -287,7 +292,7 @@ export function DriverApp() {
         </div>
 
         {/* ─── Tabs (desktop; on a phone the bottom bar does this) ─── */}
-        <div className="mt-2.5 hidden gap-1 rounded-lg bg-surface2 p-1 md:flex">
+        <div className="mx-4 mt-2.5 hidden gap-1 rounded-lg bg-surface2 p-1 md:flex">
           {[
             { id: 'calendar', label: 'التقويم', icon: '📅' },
             { id: 'navigation', label: 'الملاحة', icon: '🧭' },

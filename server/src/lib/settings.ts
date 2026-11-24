@@ -60,7 +60,7 @@ export const settingsPatchSchema = settingsSchema.partial().strict();
 
 export function defaultSettings(): AppSettings {
   return {
-    clinicName: 'عيادة النخبة الطبية',
+    clinicName: 'MEDICO CLINIC',
     whatsappTemplate: DEFAULT_WHATSAPP_TEMPLATE,
     mapCenterLat: env.mapCenterLat,
     mapCenterLng: env.mapCenterLng,
