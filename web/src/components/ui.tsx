@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import { useI18n } from '../i18n';
 
@@ -120,7 +121,9 @@ export function Modal({
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
   if (!open) return null;
-  return (
+  // Drawn on the page body: a dialog opened from inside a blurred / transformed bar (the driver's header) would
+  // otherwise be sized and clipped by that bar instead of the screen.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/30 p-4 backdrop-blur-sm" onClick={onClose}>
       <div
         className={`mt-10 w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} rounded-[28px] border border-white/60 bg-surface shadow-2xl dark:border-white/5`}
@@ -138,7 +141,8 @@ export function Modal({
         </div>
         <div className="p-6 pt-4">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

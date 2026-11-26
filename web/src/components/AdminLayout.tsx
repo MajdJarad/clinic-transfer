@@ -65,6 +65,8 @@ function LayoutInner({ children }: { children: ReactNode }) {
   useEffect(() => setMore(false), [location.pathname]);
   const items = NAV.filter((n) => !n.adminOnly || user?.role === 'ADMIN');
   const dock = DOCK_PATHS.map((p) => items.find((i) => i.to === p)).filter((i): i is NavItem => !!i);
+  // The clinic name / language / theme bar is only on the home page: every other screen gets the full height.
+  const isHome = location.pathname === '/';
   const moreActive = !dock.some((d) => (d.to === '/' ? location.pathname === '/' : location.pathname.startsWith(d.to)));
 
   const linkClass = (isActive: boolean) =>
@@ -123,6 +125,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex min-h-full flex-col md:ps-[17.5rem]">
+        {isHome && (
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 bg-[color-mix(in_srgb,var(--bg)_72%,transparent)] px-4 backdrop-blur-xl md:px-6">
           <div className="md:hidden" dir="ltr">
             <Logo className="h-7 w-auto" />
@@ -133,6 +136,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
             <ThemeToggle />
           </div>
         </header>
+        )}
 
         <AlertsBanner />
 

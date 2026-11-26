@@ -4,6 +4,7 @@ import { prisma } from '../db';
 import { asyncHandler, HttpError } from '../lib/http';
 import { rateLimit } from '../lib/rateLimit';
 import { ACTIVE_STATUSES } from '../lib/tripProgress';
+import { getSettings } from '../lib/settings';
 import { authenticate, requireRole } from '../middleware/auth';
 
 export const alertsRouter = Router();
@@ -99,6 +100,22 @@ alertsRouter.get(
       take: all ? 200 : 50,
     });
     res.json(await toDto(rows));
+  }),
+);
+
+// Who to call right now: the group-call line the admin set (a phone number or a call link) and the people
+// who handle alerts. Offered to the driver in the alert sheet, so help is one tap away before (or after) sending.
+alertsRouter.get(
+  '/contacts',
+  asyncHandler(async (_req, res) => {
+    const [settings, users] = await Promise.all([
+      getSettings(),
+      prisma.user.findMany({ where: { role: { in: ['ADMIN', 'COORDINATOR'] }, active: true }, select: { id: true, name: true, role: true, phone: true }, orderBy: { name: 'asc' } }),
+    ]);
+    res.json({
+      groupCall: settings.emergencyCallNumber || null,
+      contacts: users.filter((u) => u.phone && u.phone.trim()).map((u) => ({ id: u.id, name: u.name, role: u.role, phone: u.phone as string })),
+    });
   }),
 );
 

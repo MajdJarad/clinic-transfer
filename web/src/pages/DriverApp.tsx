@@ -236,7 +236,8 @@ export function DriverApp() {
       {/* ─── Driver Top Header ─── */}
       <header ref={headerRef} className="sticky top-0 z-30 bg-[color-mix(in_srgb,var(--bg)_78%,transparent)] pb-2 backdrop-blur-xl">
         {/* Brand: the horizontal logo */}
-        <div className="px-4 pt-3" dir="ltr">
+        {/* On a phone the clinic name / theme bar is only on the home tab: the map and the other tabs keep the room. */}
+        <div className={`px-4 pt-3 ${activeTab === 'calendar' ? '' : 'max-md:hidden'}`} dir="ltr">
           <Logo className="h-7 w-auto" />
         </div>
         <div className="flex items-center gap-3 px-4 pt-2.5">
@@ -267,7 +268,7 @@ export function DriverApp() {
           <DriverAlertButton />
         </div>
 
-        <div className="mt-2.5 flex items-center justify-between gap-2 px-4">
+        <div className={`mt-2.5 flex items-center justify-between gap-2 px-4 ${activeTab === 'calendar' ? '' : 'max-md:hidden'}`}>
           {/* Read-only status (set by the admin / coordinator) */}
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${

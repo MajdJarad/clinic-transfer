@@ -102,7 +102,7 @@ export function MapScreen({ className, trip: driverTrip, onStartTrip }: MapScree
   const route = routes[selected] ?? null;
 
   // ── Map UI state
-  const [mapType, setMapType] = useState<MapTypeKey>('roadmap');
+  const [mapType, setMapType] = useState<MapTypeKey>('satellite');
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>({ traffic: true, transit: false, bicycling: false });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [picked, setPicked] = useState<MapPick | null>(null); // a tapped point / chosen search result
@@ -175,7 +175,8 @@ export function MapScreen({ className, trip: driverTrip, onStartTrip }: MapScree
 
   // ── Base map type, resize after fullscreen, fly to a searched place
   useEffect(() => {
-    mapRef.current?.setMapTypeId(mapType);
+    // "Satellite" is Google's hybrid view (imagery + roads + street names): you still read the street names.
+    mapRef.current?.setMapTypeId(mapType === 'satellite' ? 'hybrid' : mapType);
   }, [ready, mapType, mapRef]);
 
   useEffect(() => {
@@ -388,7 +389,7 @@ export function MapScreen({ className, trip: driverTrip, onStartTrip }: MapScree
     <div
       className={`w-full overflow-hidden bg-slate-900 ${
         // (not "relative" while full screen: it would override "fixed")
-        isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : `relative rounded-3xl ${className ?? 'h-[calc(100dvh-10rem-var(--chrome-extra,0px))] sm:h-[calc(100vh-6.5rem-var(--chrome-extra,0px))]'}`
+        isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : `relative rounded-3xl ${className ?? 'h-[calc(100dvh-7rem-var(--chrome-extra,0px))] sm:h-[calc(100vh-3rem-var(--chrome-extra,0px))]'}`
       }`}
     >
       <div ref={gm.divRef} className="z-0 h-full w-full" />
@@ -489,6 +490,7 @@ export function MapScreen({ className, trip: driverTrip, onStartTrip }: MapScree
           mode={nav.mode}
           route={nav.route}
           avoid={nav.avoid}
+          mapType={mapType}
           secondaryAction={secondaryAction}
           onExit={() => setNav(null)}
         />

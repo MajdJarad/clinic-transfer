@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { Icon } from '../../components/Icon';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useChromeHeight } from '../../lib/chromeExtra';
 import { ageLabel } from '../tracking/freshness';
 import { useAlerts } from './AlertsProvider';
@@ -24,18 +24,19 @@ const ghost =
 export function AlertsBanner() {
   const { alerts, ack, resolve } = useAlerts();
   const box = useRef<HTMLDivElement>(null);
+  const { pathname } = useLocation();
   useChromeHeight('alerts', box, alerts.length > 0);
   if (!alerts.length) return null;
   const shown = alerts.slice(0, 2);
   return (
-    <div ref={box} className="sticky top-14 z-20 space-y-2 px-4 pt-3 md:px-6" data-testid="alerts-banner" role="alert">
+    <div ref={box} className={`sticky z-20 space-y-2 px-4 pt-3 md:px-6 ${pathname === '/' ? 'top-14' : 'top-0'}`} data-testid="alerts-banner" role="alert">
       {shown.map((a) => {
         const open = a.status === 'OPEN';
         return (
           <div
             key={a.id}
             data-testid={`alert-${a.id}`}
-            className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-3xl px-4 py-3 shadow-lg ${
+            className={`flex flex-wrap items-center gap-x-4 gap-y-2 rounded-3xl px-4 py-3 shadow-lg ${open ? 'alarm-pulse ring-2 ring-red-500/60 ' : ''}${
               open
                 ? 'bg-[var(--tint-rose)] text-red-900 dark:text-red-100'
                 : 'bg-[var(--tint-butter)] text-amber-900 dark:text-amber-100'

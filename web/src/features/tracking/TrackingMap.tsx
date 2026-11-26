@@ -16,6 +16,8 @@ interface TrackingMapProps {
   /** Changing this value refits the map to every located driver. */
   fitSignal: number;
   traffic?: boolean;
+  /** Base map: satellite = imagery with roads and names (hybrid). */
+  satellite?: boolean;
   className?: string;
 }
 
@@ -26,8 +28,9 @@ export interface TrackingMapHandle {
 const GLIDE_MS = 2800; // a marker slides to its new position over (a bit less than) the poll interval
 
 /**
- * A car seen from above, pointing where it is heading, with just the letters of its plate under it
- * (e.g. MPV): enough to tell the cars apart. The driver's name is in the list and on selection.
+ * A small car seen from above, pointing where it is heading, with only the letters of its plate above it
+ * (e.g. MPV): enough to tell the cars apart while keeping the map readable with many cars. The driver's
+ * name is in the list and on selection.
  */
 function carHtml(d: TrackingDriver, selected: boolean): string {
   const level = freshnessOf(d.ageSeconds);
@@ -37,34 +40,37 @@ function carHtml(d: TrackingDriver, selected: boolean): string {
   const quietFor = level === 'stale' && d.ageSeconds != null ? escapeHtml(ageLabel(d.ageSeconds)) : '';
   const heading = level === 'live' || level === 'recent' ? (d.heading ?? 0) : 0;
   const ring = selected
-    ? '<div style="position:absolute;inset:-9px;border-radius:50%;border:3px solid #c9a66b;background:rgba(201,166,107,.16)"></div>'
+    ? '<div style="position:absolute;inset:-7px;border-radius:50%;border:2.5px solid #2cc4b9;background:rgba(44,196,185,.18)"></div>'
     : level === 'live'
-      ? '<div style="position:absolute;inset:-4px;border-radius:50%;animation:drvPulse 2s infinite"></div>'
+      ? '<div style="position:absolute;inset:-3px;border-radius:50%;animation:drvPulse 2s infinite"></div>'
       : '';
-  return `<div style="position:relative;width:28px;height:46px;opacity:${level === 'stale' || level === 'none' ? 0.8 : 1}">
+  return `<div style="position:relative;width:18px;height:30px;opacity:${level === 'stale' || level === 'none' ? 0.8 : 1}">
     ${ring}
-    <svg viewBox="0 0 28 46" width="28" height="46" style="position:relative;transform:rotate(${heading}deg);transition:transform .6s linear;filter:drop-shadow(0 2px 3px rgba(0,0,0,.55))">
+    <svg viewBox="0 0 28 46" width="18" height="30" style="position:relative;transform:rotate(${heading}deg);transition:transform .6s linear;filter:drop-shadow(0 1.5px 2px rgba(0,0,0,.55))">
       <rect x="1" y="9" width="4" height="9" rx="1.5" fill="#1f2937"/><rect x="23" y="9" width="4" height="9" rx="1.5" fill="#1f2937"/>
       <rect x="1" y="29" width="4" height="9" rx="1.5" fill="#1f2937"/><rect x="23" y="29" width="4" height="9" rx="1.5" fill="#1f2937"/>
-      <rect x="3.5" y="2" width="21" height="42" rx="9" fill="${color}" stroke="#fff" stroke-width="2"/>
+      <rect x="3.5" y="2" width="21" height="42" rx="9" fill="${color}" stroke="#fff" stroke-width="2.4"/>
       <path d="M7 14Q14 9 21 14L19.5 20H8.5Z" fill="#dbeafe"/>
       <rect x="8.5" y="22" width="11" height="9" rx="2" fill="${color}" stroke="#fff" stroke-opacity=".55"/>
       <path d="M8.5 33H19.5L21 37Q14 40 7 37Z" fill="#dbeafe"/>
       <circle cx="8.5" cy="4.6" r="1.6" fill="#fde047"/><circle cx="19.5" cy="4.6" r="1.6" fill="#fde047"/>
     </svg>
-    <div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;background:#141a27;color:#fff;border:2px solid ${selected ? '#c9a66b' : color};border-radius:8px;padding:1px 7px;font:800 12px/16px system-ui,sans-serif;letter-spacing:.5px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.45)">${letters}</div>${quietFor ? `<div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:25px;background:rgba(255,255,255,.95);color:#374151;border-radius:6px;padding:0 6px;font:700 10px/15px system-ui,sans-serif;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.35)">${quietFor}</div>` : ''}
+    <div style="position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:${selected ? 9 : 4}px;background:rgba(20,26,39,.92);color:#fff;border:1.5px solid ${selected ? '#2cc4b9' : color};border-radius:6px;padding:0 5px;font:700 10px/14px system-ui,sans-serif;letter-spacing:.4px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.45)">${letters}</div>${quietFor ? `<div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:2px;background:rgba(255,255,255,.95);color:#374151;border-radius:5px;padding:0 5px;font:600 9px/13px system-ui,sans-serif;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.35)">${quietFor}</div>` : ''}
   </div>`;
 }
 
 /** Live map of the drivers: one persistent marker each, gliding to every new position. */
 export const TrackingMap = forwardRef<TrackingMapHandle, TrackingMapProps>(function TrackingMap(
-  { drivers, selectedId, followId, onSelect, fitSignal, traffic, className },
+  { drivers, selectedId, followId, onSelect, fitSignal, traffic, satellite, className },
   handle,
 ) {
   const { dir } = useI18n();
   const gm = useGoogleMap({ disableDefaultUI: true });
   const { mapRef, gRef, ready } = gm;
   useMapLayers(gm, { traffic });
+  useEffect(() => {
+    if (ready) mapRef.current?.setMapTypeId(satellite ? 'hybrid' : 'roadmap');
+  }, [ready, satellite, mapRef]);
   useImperativeHandle(handle, () => ({ zoomBy: (d) => gm.mapRef.current?.setZoom((gm.mapRef.current.getZoom() ?? 12) + d) }), [gm.mapRef]);
   const markers = useRef(new Map<string, { marker: HtmlMarker; html: string; lat: number; lng: number }>());
   const onSelectRef = useRef(onSelect);

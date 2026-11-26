@@ -45,6 +45,8 @@ interface NavigationScreenProps {
   arrivalAction?: { label: string; run: () => Promise<void> | void };
   /** A second, optional action on the arrival card (e.g. tell the patient the car is here). */
   secondaryAction?: { label: string; run: () => Promise<string | void> | string | void };
+  /** Base map to start on (satellite by default on the map screen). */
+  mapType?: 'roadmap' | 'satellite' | 'terrain';
   onExit: () => void;
 }
 
@@ -87,7 +89,7 @@ export function unlockSpeech() {
 
 type Status = 'locating' | 'navigating' | 'rerouting' | 'arrived';
 
-export function NavigationScreen({ destination, mode, route, avoid, arrivalAction, secondaryAction, onExit }: NavigationScreenProps) {
+export function NavigationScreen({ destination, mode, route, avoid, arrivalAction, secondaryAction, mapType = 'roadmap', onExit }: NavigationScreenProps) {
   const { googleMapsApiKey, googleMapId } = useMapConfig();
   const { theme } = useTheme();
 
@@ -172,6 +174,8 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
           disableDefaultUI: true,
           gestureHandling: 'greedy',
           clickableIcons: false,
+          // The same base map the driver was looking at while planning (satellite = hybrid, with street names).
+          mapTypeId: mapType === 'satellite' ? 'hybrid' : mapType,
           // A Cloud Map ID gives a vector map: heading-up rotation and 3D tilt like Google navigation.
           ...(googleMapId ? { mapId: googleMapId, tilt: mode === 'driving' ? 45 : 0 } : {}),
         });

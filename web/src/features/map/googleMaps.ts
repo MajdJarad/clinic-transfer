@@ -112,13 +112,20 @@ export function createHtmlMarker(
 }
 
 export function pinHtml(color: string, text: string, badge?: string, dir = 'rtl'): string {
-  const badgeHtml = badge
-    ? `<span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:#fff;color:${color};text-align:center;line-height:18px;font-size:11px;font-weight:900">${escapeHtml(badge)}</span>`
-    : `<span style="width:6px;height:6px;border-radius:999px;background:#fff;display:inline-block"></span>`;
+  // A point on a route (A / B / destination) is just a lettered round pin: the name is in the panel, and a long
+  // name across the map would hide what the driver is looking at.
+  if (badge) {
+    return `<div dir="${dir}" style="display:flex;flex-direction:column;align-items:center;pointer-events:none">
+      <span style="display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:${color};color:#fff;border:2.5px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.4);font:700 12px/1 system-ui,sans-serif">${escapeHtml(badge)}</span>
+      <div style="width:2px;height:9px;background:${color};box-shadow:0 1px 3px rgba(0,0,0,.35)"></div>
+    </div>`;
+  }
+  // Other markers: a small pill with a short, cut-off name.
+  const short = text.length > 14 ? `${text.slice(0, 13)}…` : text;
   return `<div dir="${dir}" style="display:flex;flex-direction:column;align-items:center">
-    <div style="background:${color};color:#fff;font-size:12px;padding:4px 10px;border-radius:20px;box-shadow:0 4px 14px rgba(0,0,0,.35);border:2px solid #fff;display:flex;align-items:center;gap:6px;white-space:nowrap;font-family:inherit">
-      ${badgeHtml}<span style="font-weight:600">${escapeHtml(text)}</span>
+    <div style="background:${color};color:#fff;font-size:11px;line-height:16px;padding:2px 9px;border-radius:20px;box-shadow:0 3px 10px rgba(0,0,0,.35);border:2px solid #fff;display:flex;align-items:center;gap:5px;white-space:nowrap;font-family:inherit;max-width:130px">
+      ${short ? `<span style="font-weight:600;overflow:hidden;text-overflow:ellipsis">${escapeHtml(short)}</span>` : '<span style="width:6px;height:6px;border-radius:999px;background:#fff;display:inline-block"></span>'}
     </div>
-    <div style="width:2px;height:12px;background:${color}"></div>
+    <div style="width:2px;height:10px;background:${color}"></div>
   </div>`;
 }

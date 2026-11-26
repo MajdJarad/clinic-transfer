@@ -138,6 +138,8 @@ export const api = {
     /** Alerts nobody has resolved (default) or everything recent. Coordinators / admins. */
     list: (all = false) => request<AlertItem[]>(`/alerts${all ? '?status=all' : ''}`),
     mine: () => request<AlertItem[]>('/alerts/mine'),
+    /** The group-call line (phone number or link) and the people who handle alerts. */
+    contacts: () => request<{ groupCall: string | null; contacts: { id: string; name: string; role: string; phone: string }[] }>('/alerts/contacts'),
     ack: (id: string) => request<AlertItem>(`/alerts/${id}/ack`, { method: 'PATCH' }),
     resolve: (id: string) => request<AlertItem>(`/alerts/${id}/resolve`, { method: 'PATCH' }),
   },

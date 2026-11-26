@@ -162,7 +162,7 @@ export function CalendarPage() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-9rem)] min-h-[560px] flex-col gap-4">
+    <div className="flex h-[calc(100vh-5.5rem)] min-h-[560px] flex-col gap-4">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" size="sm" onClick={() => setAnchor(new Date())}>

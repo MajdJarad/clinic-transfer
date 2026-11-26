@@ -55,7 +55,7 @@ export function MapView({
       const marker = createHtmlMarker(
         g,
         { lat: p.lat, lng: p.lng },
-        pinHtml(p.color ?? '#232d44', `${p.title}${p.subtitle ? ` - ${p.subtitle}` : ''}`, undefined, dir),
+        pinHtml(p.color ?? '#232d44', p.title, undefined, dir),
         info
           ? () => {
               info.setPosition({ lat: p.lat, lng: p.lng });

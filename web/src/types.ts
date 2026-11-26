@@ -172,6 +172,7 @@ export interface AppSettings {
   mapCenterLat: number;
   mapCenterLng: number;
   mapZoom: number;
+  emergencyCallNumber: string;
 }
 
 export interface SystemInfo {
