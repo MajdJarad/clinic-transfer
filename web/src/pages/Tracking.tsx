@@ -102,7 +102,7 @@ export function Tracking() {
   return (
     <div
       className={`w-full overflow-hidden bg-slate-900 ${
-        isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : 'relative h-[calc(100dvh-10rem-var(--chrome-extra,0px))] rounded-2xl sm:h-[calc(100vh-6.5rem-var(--chrome-extra,0px))]'
+        isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : 'relative h-[calc(100dvh-10rem-var(--chrome-extra,0px))] rounded-3xl sm:h-[calc(100vh-6.5rem-var(--chrome-extra,0px))]'
       }`}
       data-testid="tracking-screen"
     >
@@ -176,7 +176,7 @@ export function Tracking() {
       {/* Drivers panel: a side card on wide screens, a bottom sheet on phones */}
       {panelOpen && (
         <div
-          className="absolute inset-x-2 bottom-2 z-20 max-h-[42%] space-y-2 overflow-y-auto rounded-2xl border border-border bg-surface/95 p-2.5 shadow-2xl backdrop-blur-md md:inset-x-auto md:bottom-3 md:start-3 md:top-14 md:max-h-none md:w-80"
+          className="absolute inset-x-2 bottom-2 z-20 max-h-[42%] space-y-2 overflow-y-auto rounded-3xl bg-surface/90 p-3 shadow-float backdrop-blur-xl md:inset-x-auto md:bottom-3 md:start-3 md:top-14 md:max-h-none md:w-80"
           data-testid="driver-list"
         >
           {sorted.length === 0 ? (

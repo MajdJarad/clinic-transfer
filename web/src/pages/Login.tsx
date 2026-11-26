@@ -32,12 +32,12 @@ export function Login() {
   };
 
   return (
-    <div className="relative grid min-h-full place-items-center bg-bg p-4">
+    <div className="relative grid min-h-full place-items-center p-4">
       <div className="absolute end-4 top-4 flex items-center gap-2">
         <LanguageSelect />
         <ThemeToggle />
       </div>
-      <div className="w-full max-w-sm overflow-hidden rounded-xl border border-border bg-surface shadow-lg">
+      <div className="w-full max-w-sm overflow-hidden rounded-[32px] border border-white/60 bg-surface shadow-float dark:border-white/5">
         <div className="flex justify-center px-6 pb-2 pt-9" dir="ltr">
           <Logo className="h-14 w-auto" />
         </div>
@@ -48,7 +48,7 @@ export function Login() {
         </div>
         <form onSubmit={submit} className="space-y-4">
           {expired && (
-            <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs font-semibold text-amber-700 dark:text-amber-300" data-testid="session-expired">
+            <p className="rounded-2xl bg-[var(--tint-butter)] p-3 text-xs font-medium text-amber-800 dark:text-amber-300" data-testid="session-expired">
               انتهت جلستك أو لم يعد حسابك موجوداً على الخادم (قد تكون البيانات أُعيدت إلى الوضع الأصلي). سجّل الدخول من جديد.
             </p>
           )}
@@ -76,7 +76,7 @@ export function Login() {
             {t('login.submit')}
           </Button>
         </form>
-        <div className="mt-6 rounded-lg border border-dashed border-border p-3 text-xs text-muted" dir="ltr">
+        <div className="mt-6 rounded-2xl bg-surface2 p-4 text-xs text-muted" dir="ltr">
           <p className="mb-1 font-medium text-fg" dir="auto">{t('login.demo')}</p>
           <p>admin@clinic.com / admin123</p>
           <p>coordinator@clinic.com / coord123</p>

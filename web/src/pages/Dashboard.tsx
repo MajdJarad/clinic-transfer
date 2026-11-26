@@ -6,17 +6,20 @@ import { MapView, type MapPoint } from '../features/map/MapView';
 import { Button, Card, EmptyState, PageHeader, SectionTitle, StatusPill } from '../components/ui';
 import { tripStatusKeys, tripTypeKeys } from '../labels';
 import type { DashboardSummary, TrackingDriver, Trip } from '../types';
+import { Icon } from '../components/Icon';
 import { WhatsAppModal } from '../components/WhatsAppModal';
 
-function StatCard({ label, value, sub, tone }: { label: string; value: number; sub: string; tone: string }) {
-  // The number stays neutral; only a small dot carries the colour of the figure's meaning.
+function StatCard({ label, value, sub, icon, tint }: { label: string; value: number; sub: string; icon: string; tint: string }) {
+  // A soft pastel tile carries the figure's colour; the number itself stays neutral.
   return (
-    <Card className="p-4">
-      <p className="flex items-center gap-2 text-sm text-muted">
-        <span className={`h-2 w-2 rounded-full bg-current ${tone}`} aria-hidden />
-        {label}
-      </p>
-      <p className="mt-2 text-3xl font-semibold tracking-tight text-fg">{value}</p>
+    <Card className="p-5">
+      <div className="flex items-start justify-between gap-3">
+        <p className="pt-1 text-sm text-muted">{label}</p>
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl text-fg/80" style={{ background: `var(--tint-${tint})` }}>
+          <Icon name={icon} className="h-5 w-5" />
+        </span>
+      </div>
+      <p className="mt-2 text-4xl font-semibold tracking-tight text-fg">{value}</p>
       <p className="mt-1 text-xs text-muted">{sub}</p>
     </Card>
   );
@@ -66,25 +69,25 @@ export function Dashboard() {
           label={t('dashboard.availableDrivers')}
           value={summary?.drivers.available ?? 0}
           sub={t('dashboard.ofTotal', { total: summary?.drivers.total ?? 0 })}
-          tone="text-emerald-600 dark:text-emerald-400"
+          icon="user" tint="sage"
         />
         <StatCard
           label={t('dashboard.todayTrips')}
           value={summary?.trips.today ?? 0}
           sub={t('dashboard.activeTrips', { count: summary?.trips.active ?? 0 })}
-          tone="text-brand-600 dark:text-brand-400"
+          icon="calendar" tint="lilac"
         />
         <StatCard
           label={t('dashboard.vehiclesInService')}
           value={(summary?.vehicles.total ?? 0) - (summary?.vehicles.inMaintenance ?? 0)}
           sub={t('dashboard.inMaintenance', { count: summary?.vehicles.inMaintenance ?? 0 })}
-          tone="text-slate-400"
+          icon="car" tint="sky"
         />
         <StatCard
           label={t('dashboard.openMaintenance')}
           value={summary?.maintenance.open ?? 0}
           sub={t('dashboard.scheduledInProgress')}
-          tone="text-amber-600 dark:text-amber-400"
+          icon="wrench" tint="butter"
         />
       </div>
 

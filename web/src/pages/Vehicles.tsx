@@ -194,7 +194,7 @@ export function Vehicles() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="ابحث برقم اللوحة، الموديل، اللون، أو اسم السائق..."
-              className="w-full rounded-xl border border-border bg-surface2 ps-9 pe-3 py-2 text-xs text-fg placeholder-muted focus:outline-none focus:border-brand-500"
+              className="w-full rounded-full bg-surface2 ps-9 pe-3 py-2 text-xs text-fg placeholder-muted focus:outline-none focus:border-brand-500"
             />
             {search && (
               <button

@@ -38,7 +38,7 @@ export function EphemeralNotice() {
   useChromeHeight('notice', box, !!info && !hidden);
   if (!info || hidden) return null;
   return (
-    <div ref={box} className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-xs font-semibold text-amber-900 dark:text-amber-200" data-testid="ephemeral-notice" role="status">
+    <div ref={box} className="mb-4 flex items-start justify-between gap-3 rounded-3xl bg-[var(--tint-butter)] px-4 py-3 text-xs font-medium text-amber-900 dark:text-amber-200" data-testid="ephemeral-notice" role="status">
       <p className="leading-relaxed">
         <Icon name="alert" inline /> <b>قاعدة البيانات على هذا الخادم مؤقتة.</b> كل ما تضيفه أو تعدّله (سائقون، رحلات، إسنادات، مواقع، إعدادات) يعود إلى بيانات العرض الأصلية عند كل نشر
         جديد وعند عودة الخدمة من النوم (بعد 15 دقيقة دون نشاط)، وحينها تبدو الحسابات والرحلات «غير مرتبطة». آخر تشغيل للخادم: {ageLabel(info.uptimeSeconds)}.
@@ -54,7 +54,7 @@ export function EphemeralNotice() {
           }
           setHidden(true);
         }}
-        className="shrink-0 rounded-lg bg-amber-600 px-2.5 py-1 text-white"
+        className="shrink-0 rounded-full bg-amber-600 px-3.5 py-1.5 text-white shadow-md"
         data-testid="ephemeral-dismiss"
       >
         فهمت

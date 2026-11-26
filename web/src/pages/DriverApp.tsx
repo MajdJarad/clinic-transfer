@@ -61,16 +61,14 @@ export function DriverApp() {
   const [calDetailTrip, setCalDetailTrip] = useState<Trip | null>(null);
   const [calQuery, setCalQuery] = useState('');
 
-  // The map tab fills the whole screen between the header and the bottom bar.
+  // The map tab fills the whole screen under the header; the floating bar sits on top of the map.
   const headerRef = useRef<HTMLElement>(null);
-  const navBarRef = useRef<HTMLElement>(null);
   const [chrome, setChrome] = useState(0);
   useLayoutEffect(() => {
-    const measure = () => setChrome((headerRef.current?.offsetHeight ?? 0) + (navBarRef.current?.offsetHeight ?? 0));
+    const measure = () => setChrome(headerRef.current?.offsetHeight ?? 0);
     measure();
     const ro = new ResizeObserver(measure);
     if (headerRef.current) ro.observe(headerRef.current);
-    if (navBarRef.current) ro.observe(navBarRef.current);
     window.addEventListener('resize', measure);
     return () => {
       ro.disconnect();
@@ -234,15 +232,15 @@ export function DriverApp() {
   };
 
   return (
-    <div className={activeTab === 'navigation' ? 'h-[100dvh] overflow-hidden bg-bg' : 'min-h-screen bg-bg pb-20 md:pb-10'}>
+    <div className={activeTab === 'navigation' ? 'h-[100dvh] overflow-hidden' : 'min-h-screen pb-28 md:pb-10'}>
       {/* ─── Driver Top Header ─── */}
-      <header ref={headerRef} className="sticky top-0 z-30 border-b border-border bg-surface pb-2">
+      <header ref={headerRef} className="sticky top-0 z-30 bg-[color-mix(in_srgb,var(--bg)_78%,transparent)] pb-2 backdrop-blur-xl">
         {/* Brand: the horizontal logo */}
         <div className="px-4 pt-3" dir="ltr">
           <Logo className="h-7 w-auto" />
         </div>
         <div className="flex items-center gap-3 px-4 pt-2.5">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-base font-semibold text-accent-soft-fg">
+          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface text-base font-semibold text-accent-soft-fg shadow-md">
             {user?.name?.charAt(0) ?? '؟'}
           </div>
           <div className="min-w-0 flex-1 leading-tight">
@@ -256,7 +254,7 @@ export function DriverApp() {
           {share.state === 'live' ? (
             <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500 ring-4 ring-emerald-500/15" title="موقعك يصل للمنسق مباشرة" data-testid="share-dot" />
           ) : (
-            <span className="shrink-0 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200" data-testid="share-problem">
+            <span className="shrink-0 rounded-full bg-[var(--tint-butter)] px-3 py-1 text-[11px] font-medium text-amber-800 dark:text-amber-200" data-testid="share-problem">
               {share.state === 'denied'
                 ? 'فعّل إذن الموقع'
                 : share.state === 'unavailable'
@@ -272,12 +270,12 @@ export function DriverApp() {
         <div className="mt-2.5 flex items-center justify-between gap-2 px-4">
           {/* Read-only status (set by the admin / coordinator) */}
           <span
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
               driver?.status === 'ON_TRIP'
-                ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300'
+                ? 'bg-[var(--tint-butter)] text-amber-700 dark:text-amber-300'
                 : driver?.status === 'OFFLINE'
-                  ? 'border-border bg-surface2 text-muted'
-                  : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300'
+                  ? 'bg-surface2 text-muted'
+                  : 'bg-[var(--tint-sage)] text-emerald-700 dark:text-emerald-300'
             }`}
             title="الحالة محددة من قبل الإدارة والمنسق"
           >
@@ -285,15 +283,15 @@ export function DriverApp() {
             {driver?.status ? t(driverStatusKeys[driver.status]) : 'متاح'}
           </span>
           <div className="flex items-center gap-1.5">
-            <ThemeToggle className="!h-8 !w-8 !border-transparent !bg-transparent" />
-            <button onClick={logout} className="rounded-lg px-2.5 py-1 text-xs font-medium text-muted transition hover:bg-surface2 hover:text-fg">
+            <ThemeToggle className="!h-8 !w-8" />
+            <button onClick={logout} className="rounded-full bg-surface px-3.5 py-1.5 text-xs font-medium text-muted shadow-md transition hover:text-fg">
               خروج
             </button>
           </div>
         </div>
 
         {/* ─── Tabs (desktop; on a phone the bottom bar does this) ─── */}
-        <div className="mx-4 mt-2.5 hidden gap-1 rounded-lg bg-surface2 p-1 md:flex">
+        <div className="mx-4 mt-2.5 hidden gap-1 rounded-full bg-surface p-1 shadow-md md:flex">
           {[
             { id: 'calendar', label: 'التقويم', icon: 'calendar' },
             { id: 'navigation', label: 'الملاحة', icon: 'compass' },
@@ -302,8 +300,8 @@ export function DriverApp() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as DriverTab)}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium transition ${
-                activeTab === tab.id ? 'bg-surface text-accent-soft-fg shadow-sm' : 'text-muted hover:text-fg'
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-full py-2 text-xs font-medium transition ${
+                activeTab === tab.id ? 'bg-brand-600 text-white shadow-md' : 'text-muted hover:text-fg'
               }`}
             >
               <Icon name={tab.icon} className="h-4 w-4" />
@@ -316,16 +314,16 @@ export function DriverApp() {
       {/* The account must be linked to a driver in the database, and its trips/position must reach the server:
           say plainly when it is not, instead of showing an empty, silent app. */}
       {!driverId && (
-        <div className="m-3 rounded-xl border border-red-400/50 bg-red-500/10 p-3 text-xs font-bold text-red-700 dark:text-red-300" data-testid="driver-unlinked">
+        <div className="m-3 rounded-3xl bg-[var(--tint-rose)] p-4 text-xs font-medium text-red-700 dark:text-red-300" data-testid="driver-unlinked">
           <Icon name="alert" inline /> هذا الحساب غير مرتبط بملف سائق في قاعدة البيانات، فلن تصلك رحلات ولن يظهر موقعك. اطلب من المسؤول ربطه بسائق، أو سجّل الدخول بحساب سائق آخر.
         </div>
       )}
       {driverId && (loadError || share.state === 'error') && (
-        <div className="m-3 flex items-center justify-between gap-3 rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-xs font-bold text-amber-800 dark:text-amber-200" data-testid="driver-sync-error">
+        <div className="m-3 flex items-center justify-between gap-3 rounded-3xl bg-[var(--tint-butter)] p-4 text-xs font-medium text-amber-800 dark:text-amber-200" data-testid="driver-sync-error">
           <span>
             <Icon name="alert" inline /> {loadError ? 'تعذّر تحميل رحلاتك من الخادم' : 'تعذّر إرسال موقعك للمنسق'}. تأكد من الاتصال بالإنترنت؛ وإن استمر ذلك سجّل الخروج ثم الدخول من جديد.
           </span>
-          <button type="button" onClick={loadDriver} className="shrink-0 rounded-lg bg-amber-600 px-3 py-1 text-white" data-testid="driver-sync-retry">
+          <button type="button" onClick={loadDriver} className="shrink-0 rounded-full bg-amber-600 px-4 py-1.5 text-white shadow-md" data-testid="driver-sync-retry">
             إعادة المحاولة
           </button>
         </div>
@@ -374,7 +372,7 @@ export function DriverApp() {
                     />
                   </div>
 
-                  <div className="flex overflow-hidden rounded-xl border border-border">
+                  <div className="flex overflow-hidden rounded-full bg-surface2">
                     {(['day', 'week', 'month'] as ViewMode[]).map((v) => (
                       <button
                         key={v}
@@ -400,7 +398,7 @@ export function DriverApp() {
                     key={tr.id}
                     type="button"
                     onClick={() => setCalDetailTrip(tr)}
-                    className="shrink-0 rounded-xl border border-border bg-surface px-3 py-2 text-start shadow-card transition hover:border-blue-400"
+                    className="shrink-0 rounded-2xl bg-surface px-4 py-2.5 text-start shadow-card transition active:scale-[0.98]"
                     data-testid={`day-trip-${tr.id}`}
                   >
                     <span className="block text-xs font-black text-fg">
@@ -417,7 +415,7 @@ export function DriverApp() {
               <button
                 type="button"
                 onClick={() => setCalAnchor(new Date(nearestTrip.scheduledAt))}
-                className="w-full rounded-xl border border-dashed border-border bg-surface px-3 py-2 text-start text-xs font-semibold text-muted transition hover:border-blue-400"
+                className="w-full rounded-2xl bg-surface px-4 py-3 text-start text-xs font-medium text-muted shadow-card transition active:scale-[0.99]"
                 data-testid="driver-nearest-trip"
               >
                 لا توجد رحلات في هذا اليوم — اضغط للانتقال إلى أقرب رحلة ({new Date(nearestTrip.scheduledAt).toLocaleDateString(intl, { day: 'numeric', month: 'long' })}، {new Date(nearestTrip.scheduledAt).toLocaleTimeString(intl, { hour: '2-digit', minute: '2-digit' })})
@@ -425,7 +423,7 @@ export function DriverApp() {
             )}
 
             {/* Calendar Main Grid Container */}
-            <div className="h-[calc(100vh-14rem)] min-h-[500px] rounded-2xl border border-border bg-surface overflow-hidden shadow-card">
+            <div className="h-[calc(100vh-14rem)] min-h-[500px] rounded-3xl bg-surface overflow-hidden shadow-card">
               {calView === 'month' ? (
                 <MonthView
                   month={calAnchor}
@@ -464,7 +462,7 @@ export function DriverApp() {
 
         {/* ══════════════════ 2. GOOGLE MAPS NAVIGATION (MOBILE-OPTIMIZED) ══════════════════ */}
         {activeTab === 'navigation' && (
-          <div style={{ height: `calc(100dvh - ${chrome}px)` }} data-testid="driver-map-area">
+          <div style={{ height: `calc(100dvh - ${chrome}px)`, ['--map-controls-bottom' as string]: '7.5rem' }} data-testid="driver-map-area">
             {/* The same map screen as the admin's, filling the screen. It follows the selected trip:
                 start = my real position, target = the patient, then the destination. */}
             <MapScreen
@@ -564,7 +562,10 @@ export function DriverApp() {
       </main>
 
       {/* ─── Bottom Navigation Bar (Mobile Friendly) ─── */}
-      <nav ref={navBarRef} className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-border bg-surface py-1.5 md:hidden">
+      <nav
+        className="shadow-float fixed inset-x-4 bottom-4 z-40 flex items-center justify-between rounded-[30px] bg-[var(--dock-bg)] p-1.5 backdrop-blur-xl md:hidden"
+        data-testid="driver-dock"
+      >
         {[
           { id: 'calendar', label: 'التقويم', icon: 'calendar' },
           { id: 'navigation', label: 'الملاحة', icon: 'compass' },
@@ -573,11 +574,11 @@ export function DriverApp() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as DriverTab)}
-            className={`flex flex-1 flex-col items-center gap-0.5 py-1 text-[11px] font-medium transition ${
-              activeTab === tab.id ? 'text-brand-600' : 'text-muted hover:text-fg'
+            className={`flex flex-1 flex-col items-center gap-0.5 rounded-[24px] px-2 py-2 text-[11px] font-medium transition ${
+              activeTab === tab.id ? 'bg-[var(--dock-active-bg)] text-[var(--dock-active-fg)] shadow-md' : 'text-[var(--dock-fg)]'
             }`}
           >
-            <Icon name={tab.icon} className="h-5 w-5" />
+            <Icon name={tab.icon} className="h-[21px] w-[21px]" />
             <span>{tab.label}</span>
           </button>
         ))}

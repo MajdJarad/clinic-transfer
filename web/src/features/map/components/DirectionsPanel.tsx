@@ -51,7 +51,7 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
   const summary = route ? `${formatDuration(route.duration)} (${formatDistance(route.distance)})` : '';
 
   return (
-    <div className="rounded-2xl border border-border bg-surface/95 p-3 text-fg shadow-2xl backdrop-blur-md transition-all sm:p-4" data-testid="directions-panel">
+    <div className="rounded-3xl bg-surface/95 p-3 text-fg shadow-float backdrop-blur-xl transition-all sm:p-4" data-testid="directions-panel">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border/70 pb-2">
         <div className="flex min-w-0 items-center gap-2">

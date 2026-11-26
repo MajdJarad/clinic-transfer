@@ -230,7 +230,7 @@ export function CalendarPage() {
           <Button onClick={() => openCreate(view === 'month' ? anchor : startOfDay(anchor))} className="w-full">
             {t('calendar.newTrip')}
           </Button>
-          <div className="rounded-2xl border border-border bg-surface p-3">
+          <div className="rounded-3xl bg-surface p-4 shadow-card">
             <MiniMonth
               month={anchor}
               selected={anchor}
@@ -238,7 +238,7 @@ export function CalendarPage() {
               onChangeMonth={(delta) => setAnchor((a) => addMonths(a, delta))}
             />
           </div>
-          <div className="rounded-2xl border border-border bg-surface p-3">
+          <div className="rounded-3xl bg-surface p-4 shadow-card">
             <p className="mb-2 text-xs font-bold text-muted">{t('calendar.calendars')}</p>
             <div className="space-y-1.5">
               {drivers.map((d) => {
@@ -277,7 +277,7 @@ export function CalendarPage() {
         <div className="min-h-0 flex-1">
           <div className="h-full min-h-[520px]">
             {query && visibleTrips.length === 0 ? (
-              <div className="grid h-full place-items-center rounded-2xl border border-border bg-surface text-sm text-muted">
+              <div className="grid h-full place-items-center rounded-3xl bg-surface text-sm text-muted shadow-card">
                 {t('calendar.noResults')}
               </div>
             ) : view === 'month' ? (

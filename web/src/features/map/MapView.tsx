@@ -127,7 +127,7 @@ export function MapView({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border" style={{ height }}>
+    <div className="relative overflow-hidden rounded-3xl" style={{ height }}>
       <div ref={gm.divRef} className="h-full w-full" />
       <button
         type="button"

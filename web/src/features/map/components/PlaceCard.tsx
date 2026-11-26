@@ -20,11 +20,11 @@ interface PlaceCardProps {
 
 /** What Google Maps shows when you tap a point or choose a search result. */
 export function PlaceCard({ place, view, onClose, onDirections, onUseAsDestination, onUseAsStart, onStreetView, onCopy }: PlaceCardProps) {
-  const sec = 'flex-1 rounded-xl border border-border bg-surface2 py-2 text-xs font-bold text-fg hover:border-blue-400 disabled:opacity-50';
+  const sec = 'flex-1 rounded-full bg-surface2 py-2.5 text-xs font-medium text-fg transition hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50';
   const pri = 'flex-1 rounded-xl bg-blue-600 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50';
   return (
     <div
-      className="absolute inset-x-3 bottom-4 z-30 rounded-2xl border border-border bg-surface/95 p-3 text-fg shadow-2xl backdrop-blur-md max-sm:me-16 sm:inset-x-0 sm:mx-auto sm:w-96"
+      className="absolute inset-x-3 bottom-4 z-30 rounded-3xl bg-surface/95 p-4 text-fg shadow-float backdrop-blur-xl max-sm:me-16 sm:inset-x-0 sm:mx-auto sm:w-96"
       data-testid="picked-card"
     >
       <div className="flex items-start justify-between gap-2">

@@ -20,7 +20,7 @@ export function MonthView({ month, events, colorFor, onDayClick, onEventClick, o
   const days = Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-surface">
+    <div className="flex h-full flex-col overflow-hidden rounded-3xl bg-surface shadow-card">
       <div className="grid grid-cols-7 border-b border-border">
         {weekdayShortKeys.map((key) => (
           <div key={key} className="border-s border-border py-2 text-center text-xs font-medium text-muted">

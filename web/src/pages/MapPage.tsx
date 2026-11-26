@@ -388,7 +388,7 @@ export function MapScreen({ className, trip: driverTrip, onStartTrip }: MapScree
     <div
       className={`w-full overflow-hidden bg-slate-900 ${
         // (not "relative" while full screen: it would override "fixed")
-        isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : `relative rounded-2xl ${className ?? 'h-[calc(100dvh-10rem-var(--chrome-extra,0px))] sm:h-[calc(100vh-6.5rem-var(--chrome-extra,0px))]'}`
+        isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : `relative rounded-3xl ${className ?? 'h-[calc(100dvh-10rem-var(--chrome-extra,0px))] sm:h-[calc(100vh-6.5rem-var(--chrome-extra,0px))]'}`
       }`}
     >
       <div ref={gm.divRef} className="z-0 h-full w-full" />

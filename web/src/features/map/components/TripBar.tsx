@@ -36,7 +36,7 @@ export function TripBar({ trip, onGo, canGo, statusLabel }: TripBarProps) {
   };
 
   return (
-    <div className="space-y-2 rounded-xl border border-border bg-surface2/70 p-2.5" data-testid="trip-bar">
+    <div className="space-y-2 rounded-2xl bg-surface2/80 p-3" data-testid="trip-bar">
       <div className="flex items-center justify-between gap-2">
         <div className={`min-w-0 text-xs font-bold ${toDestination ? 'text-emerald-700' : 'text-blue-700'}`} data-testid="trip-stage">
           <Icon name={toDestination ? 'clinic' : 'heart'} inline />

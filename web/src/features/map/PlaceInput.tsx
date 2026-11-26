@@ -172,7 +172,7 @@ export function PlaceInput({
       {showList && (
         <div
           role="listbox"
-          className="absolute inset-x-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-xl border border-border bg-surface p-1 text-xs shadow-2xl"
+          className="absolute inset-x-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-2xl bg-surface p-1.5 text-xs shadow-2xl"
         >
           {onUseCurrentLocation && (
             <button

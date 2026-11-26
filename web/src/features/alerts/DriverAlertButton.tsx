@@ -115,7 +115,7 @@ export function DriverAlertButton() {
             maxLength={500}
             rows={3}
             placeholder="تفاصيل إضافية (اختياري)…"
-            className="w-full rounded-xl border border-border bg-surface2 p-3 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-red-400"
+            className="w-full rounded-2xl bg-surface2 p-3 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-red-400"
             data-testid="alert-note"
           />
           {error && <p className="text-xs font-bold text-red-600">{error}</p>}

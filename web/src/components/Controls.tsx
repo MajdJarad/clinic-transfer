@@ -29,7 +29,7 @@ export function ThemeToggle({ className = '' }: { className?: string }) {
       onClick={toggle}
       title={label}
       aria-label={label}
-      className={`grid h-9 w-9 place-items-center rounded-lg border border-border bg-surface text-muted transition hover:text-fg ${className}`}
+      className={`grid h-10 w-10 place-items-center rounded-full bg-surface text-muted shadow-md transition hover:text-fg active:scale-95 ${className}`}
     >
       {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
     </button>
@@ -43,7 +43,7 @@ export function LanguageSelect({ className = '' }: { className?: string }) {
       value={locale}
       onChange={(e) => setLocale(e.target.value as Locale)}
       aria-label={t('common.language')}
-      className={`h-9 rounded-lg border border-border bg-surface px-2 text-sm text-fg outline-none focus:border-brand-500 ${className}`}
+      className={`h-10 rounded-full bg-surface px-3 text-sm text-fg shadow-md outline-none focus:ring-4 focus:ring-[color-mix(in_srgb,var(--ring)_16%,transparent)] ${className}`}
     >
       {LOCALES.map((l) => (
         <option key={l.code} value={l.code}>
