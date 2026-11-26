@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Icon } from '../../components/Icon';
 import { api } from '../../api';
 import { newSessionToken as newSession } from './resolveAddress';
 
@@ -21,10 +22,12 @@ interface PlaceInputProps {
   onClear: () => void;
   onUseCurrentLocation?: () => void; // shows a "my location" row at the top
   placeholder: string;
-  badge?: string;
+  badge?: ReactNode;
   badgeClass?: string;
   /** Set when the text was edited but no suggestion has been chosen yet. */
   unresolved?: boolean;
+  /** 'field' (default): a tinted input for directions; 'bare': no box of its own, for use inside a search pill. */
+  variant?: 'field' | 'bare';
 }
 
 /** Google-style place search: suggestions as you type, keyboard support, "my location" row. */
@@ -38,6 +41,7 @@ export function PlaceInput({
   badge,
   badgeClass,
   unresolved,
+  variant = 'field',
 }: PlaceInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
@@ -121,12 +125,16 @@ export function PlaceInput({
   return (
     <div className="relative">
       <div
-        className={`flex items-center gap-2 rounded-xl bg-surface2 px-2.5 py-1.5 border transition focus-within:border-blue-500 ${
-          unresolved ? 'border-amber-500/70' : 'border-border'
-        }`}
+        className={
+          variant === 'bare'
+            ? 'flex h-10 items-center gap-2.5 px-1'
+            : `flex h-11 items-center gap-2.5 rounded-2xl border bg-surface2 px-3 transition focus-within:border-brand-500/40 focus-within:bg-surface focus-within:ring-4 focus-within:ring-[color-mix(in_srgb,var(--ring)_14%,transparent)] ${
+                unresolved ? 'border-amber-500/70' : 'border-transparent'
+              }`
+        }
       >
         {badge && (
-          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white font-bold text-[10px] ${badgeClass ?? ''}`}>
+          <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white ${badgeClass ?? ''}`}>
             {badge}
           </span>
         )}
@@ -144,9 +152,9 @@ export function PlaceInput({
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
-          className="w-full bg-transparent text-xs text-fg placeholder-muted focus:outline-none"
+          className="w-full bg-transparent text-sm text-fg placeholder-muted focus:outline-none"
         />
-        {(loading || resolving) && <span className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />}
+        {(loading || resolving) && <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-brand-500 border-t-transparent" />}
         {value && (
           <button
             type="button"
@@ -157,21 +165,21 @@ export function PlaceInput({
               setItems([]);
               inputRef.current?.focus();
             }}
-            className="p-0.5 text-xs text-muted hover:text-fg"
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-muted transition hover:bg-surface hover:text-fg"
           >
-            ✕
+            <Icon name="x" className="h-4 w-4" />
           </button>
         )}
       </div>
 
       {unresolved && !showList && (
-        <p className="mt-1 ps-1 text-[10px] text-amber-600">اختر مكاناً من قائمة الاقتراحات لتحديد الموقع بدقة</p>
+        <p className="mt-1 ps-1 text-[11px] text-amber-600">اختر مكاناً من قائمة الاقتراحات لتحديد الموقع بدقة</p>
       )}
 
       {showList && (
         <div
           role="listbox"
-          className="absolute inset-x-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-xl border border-border bg-surface p-1 text-xs shadow-2xl"
+          className="absolute inset-x-0 top-full z-50 mt-2 max-h-64 overflow-y-auto rounded-3xl bg-surface p-2 text-sm shadow-2xl"
         >
           {onUseCurrentLocation && (
             <button
@@ -181,9 +189,9 @@ export function PlaceInput({
                 onUseCurrentLocation();
                 setOpen(false);
               }}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-start text-blue-600 transition hover:bg-surface2"
+              className="flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-start text-brand-600 transition hover:bg-surface2 dark:text-brand-300"
             >
-              <span className="shrink-0">🎯</span>
+              <Icon name="target" />
               <span className="font-semibold">موقعي الحالي</span>
             </button>
           )}
@@ -196,14 +204,14 @@ export function PlaceInput({
               onMouseDown={(e) => e.preventDefault()}
               onMouseEnter={() => setActive(i)}
               onClick={() => void pick(s)}
-              className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-start transition ${
+              className={`flex w-full items-start gap-2.5 rounded-2xl px-3 py-2.5 text-start transition ${
                 i === active ? 'bg-surface2' : 'hover:bg-surface2'
               }`}
             >
-              <span className="mt-0.5 shrink-0">📍</span>
+              <Icon name="pin" className="mt-0.5" />
               <span className="min-w-0">
                 <span className="block truncate font-medium text-fg">{s.main}</span>
-                {s.secondary && <span className="block truncate text-[11px] text-muted">{s.secondary}</span>}
+                {s.secondary && <span className="block truncate text-xs text-muted">{s.secondary}</span>}
               </span>
             </button>
           ))}

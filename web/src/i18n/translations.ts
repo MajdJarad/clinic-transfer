@@ -16,6 +16,10 @@ export const LOCALES: LocaleMeta[] = [
 type Dict = Record<string, string>;
 
 const ar: Dict = {
+  'nav.group.ops': 'التشغيل',
+  'nav.group.watch': 'المتابعة',
+  'nav.group.resources': 'الموارد',
+  'nav.group.admin': 'الإدارة',
   'common.app': 'نقل المرضى',
   'common.clinic': 'MEDICO CLINIC',
   'common.save': 'حفظ',
@@ -27,6 +31,7 @@ const ar: Dict = {
   'common.reset': 'إعادة تعيين',
   'common.loading': 'جارٍ التحميل...',
   'common.logout': 'تسجيل الخروج',
+  'common.more': 'المزيد',
   'common.today': 'اليوم',
   'common.prev': 'السابق',
   'common.next': 'التالي',
@@ -38,6 +43,10 @@ const ar: Dict = {
   'common.light': 'فاتح',
   'common.dark': 'داكن',
 
+  'nav.short./': 'الرئيسية',
+  'nav.short./trips': 'التقويم',
+  'nav.short./map': 'الخريطة',
+  'nav.short./tracking': 'التتبع',
   'nav.dashboard': 'لوحة التحكم',
   'nav.calendar': 'التقويم',
   'nav.tracking': 'التتبع اللحظي',
@@ -314,6 +323,10 @@ const ar: Dict = {
 };
 
 const en: Dict = {
+  'nav.group.ops': 'Operations',
+  'nav.group.watch': 'Monitoring',
+  'nav.group.resources': 'Resources',
+  'nav.group.admin': 'Administration',
   'common.app': 'Patient Transfer',
   'common.clinic': 'MEDICO CLINIC',
   'common.save': 'Save',
@@ -325,6 +338,7 @@ const en: Dict = {
   'common.reset': 'Reset',
   'common.loading': 'Loading...',
   'common.logout': 'Log out',
+  'common.more': 'More',
   'common.today': 'Today',
   'common.prev': 'Previous',
   'common.next': 'Next',
@@ -336,6 +350,10 @@ const en: Dict = {
   'common.light': 'Light',
   'common.dark': 'Dark',
 
+  'nav.short./': 'Home',
+  'nav.short./trips': 'Calendar',
+  'nav.short./map': 'Map',
+  'nav.short./tracking': 'Live',
   'nav.dashboard': 'Dashboard',
   'nav.calendar': 'Calendar',
   'nav.tracking': 'Live Tracking',
@@ -612,6 +630,10 @@ const en: Dict = {
 };
 
 const tr: Dict = {
+  'nav.group.ops': 'Operasyon',
+  'nav.group.watch': 'Takip',
+  'nav.group.resources': 'Kaynaklar',
+  'nav.group.admin': 'Yönetim',
   'common.app': 'Hasta Transferi',
   'common.clinic': 'MEDICO CLINIC',
   'common.save': 'Kaydet',
@@ -623,6 +645,7 @@ const tr: Dict = {
   'common.reset': 'Sıfırla',
   'common.loading': 'Yükleniyor...',
   'common.logout': 'Çıkış yap',
+  'common.more': 'Daha fazla',
   'common.today': 'Bugün',
   'common.prev': 'Önceki',
   'common.next': 'Sonraki',
@@ -634,6 +657,10 @@ const tr: Dict = {
   'common.light': 'Açık',
   'common.dark': 'Koyu',
 
+  'nav.short./': 'Ana sayfa',
+  'nav.short./trips': 'Takvim',
+  'nav.short./map': 'Harita',
+  'nav.short./tracking': 'Canlı',
   'nav.dashboard': 'Panel',
   'nav.calendar': 'Takvim',
   'nav.tracking': 'Canlı Takip',

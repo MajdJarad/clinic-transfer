@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Icon } from './Icon';
 import { api } from '../api';
 import type { ArrivalMessage, Trip } from '../types';
 import { useI18n } from '../i18n';
@@ -79,7 +80,7 @@ export function WhatsAppModal({
           </div>
           {!data.phoneValid && (
             <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs font-semibold text-amber-700" data-testid="phone-invalid">
-              ⚠️ الرقم محفوظ بلا رمز الدولة ولا يمكن فتح واتساب به. عدّل الرحلة واكتب الرقم مع رمز الدولة (مثل +905331234567).
+              <Icon name="alert" inline /> الرقم محفوظ بلا رمز الدولة ولا يمكن فتح واتساب به. عدّل الرحلة واكتب الرقم مع رمز الدولة (مثل +905331234567).
             </p>
           )}
           <p className="text-xs text-muted">{t('wa.note')}</p>

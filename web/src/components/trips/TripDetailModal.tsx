@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Icon } from '../Icon';
 import { useNavigate } from 'react-router-dom';
 import { ConfirmDialog } from '../ConfirmDialog';
 import type { Trip, TripStatus } from '../../types';
@@ -107,7 +108,7 @@ export function TripDetailModal({ trip, onClose, onEdit, onAssign, onWhatsApp, o
               className="!bg-blue-600 hover:!bg-blue-700 !text-white font-bold flex items-center gap-1.5 shadow-sm"
               onClick={() => startNavigation(trip)}
             >
-              <span>🧭</span>
+              <Icon name="compass" />
               <span>انطلاق للملاحة</span>
             </Button>
             {onNotifyPatient && trip.status !== 'COMPLETED' && trip.status !== 'CANCELLED' && (
@@ -127,7 +128,7 @@ export function TripDetailModal({ trip, onClose, onEdit, onAssign, onWhatsApp, o
                 }}
                 data-testid="detail-notify"
               >
-                📨 تبليغ المريض
+                <Icon name="send" inline /> تبليغ المريض
               </Button>
             )}
             {onStatus && (
@@ -165,13 +166,13 @@ export function TripDetailModal({ trip, onClose, onEdit, onAssign, onWhatsApp, o
             )}
             {onDelete && (
               <Button size="sm" variant="danger" onClick={() => setConfirmDelete(true)} data-testid="trip-delete">
-                🗑️ حذف
+                <Icon name="trash" inline /> حذف
               </Button>
             )}
           </div>
           {trip.patientNoticeRequestedAt && !trip.patientNoticeSentAt && onWhatsApp && (
             <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-2.5 text-xs font-semibold text-amber-700 dark:text-amber-300" data-testid="notice-requested">
-              🔔 طلب السائق إبلاغ المريض بوصول السيارة. افتح واتساب لإرسال الرسالة.
+              <Icon name="bell" inline /> طلب السائق إبلاغ المريض بوصول السيارة. افتح واتساب لإرسال الرسالة.
             </p>
           )}
           {deleteError && <p className="text-xs font-semibold text-red-600">{deleteError}</p>}

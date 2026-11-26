@@ -1,58 +1,119 @@
 @import 'tailwindcss';
 
-/* Fonts are bundled with the app (no request to an external font server, same look on every phone). */
-@import '@fontsource/ibm-plex-sans-arabic/arabic-400.css';
-@import '@fontsource/ibm-plex-sans-arabic/arabic-500.css';
-@import '@fontsource/ibm-plex-sans-arabic/arabic-600.css';
-@import '@fontsource/ibm-plex-sans-arabic/latin-400.css';
-@import '@fontsource/ibm-plex-sans-arabic/latin-500.css';
-@import '@fontsource/ibm-plex-sans-arabic/latin-600.css';
-@import '@fontsource/ibm-plex-sans-arabic/latin-ext-400.css';
-@import '@fontsource/ibm-plex-sans-arabic/latin-ext-500.css';
-@import '@fontsource/ibm-plex-sans-arabic/latin-ext-600.css';
+/* Font: bundled with the app (no external font server). One variable font for Arabic and Latin. */
+@import '@fontsource-variable/readex-pro/wght.css';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Design tokens: a calm, low-contrast clinical look.
- *  - quiet cool-grey surfaces, hairline borders, almost no shadow;
- *  - ONE accent (deep teal); red / amber / green only when something needs attention or confirms;
- *  - medium weights only (no heavy bold), generous line height for Arabic.
+ * IDENTITY: "Mist & Teal".
+ *  - A soft lavender-to-mint canvas; floating, rounded, glassy panels with wide diffused shadows (no hard borders);
+ *  - ink-black pill buttons; the teal of the emblem is the one accent; pastel tints for states and calendar items;
+ *  - dark theme: near-black canvas, quiet charcoal panels, teal as the light.
  */
 :root {
-  --bg: #f6f7f9;
+  --canvas:
+    radial-gradient(1100px 640px at 6% -8%, #e4e6fc 0%, transparent 62%),
+    radial-gradient(900px 560px at 104% 2%, #d9efee 0%, transparent 58%),
+    linear-gradient(180deg, #eef0fa 0%, #ebf2f4 100%);
+  --bg: #eef1f8;
   --surface: #ffffff;
-  --surface2: #f8f9fb;
-  --fg: #1d2939;
-  --muted: #667085;
-  --border: #e4e7ec;
-  --accent-soft: #eef7f6;
-  --accent-soft-fg: #0d5f59;
-  --ring: #1d948b;
+  --surface2: #f5f6fb;
+  --fg: #181c27;
+  --muted: #7a8194;
+  --border: rgba(24, 28, 39, 0.07);
+  --accent-soft: #e0f3f0;
+  --accent-soft-fg: #0b6360;
+  --ring: #17aaa0;
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.9);
+  --sidebar-fg: #3b4254;
+  --sidebar-muted: #8a91a3;
+  --dock-bg: rgba(25, 28, 38, 0.94);
+  --dock-fg: rgba(255, 255, 255, 0.62);
+  --dock-active-bg: #ffffff;
+  --dock-active-fg: #191c26;
   --logo-word: #2b2b2b;
   --logo-emblem: #01aea8;
-  --shadow: 0 1px 2px 0 rgb(16 24 40 / 0.04);
-  --shadow-pop: 0 8px 24px -6px rgb(16 24 40 / 0.12), 0 2px 6px -2px rgb(16 24 40 / 0.06);
+  --sh-card: 0 12px 32px -16px rgba(31, 41, 80, 0.18), 0 2px 6px rgba(31, 41, 80, 0.04);
+  --sh-float: 0 22px 44px -14px rgba(31, 41, 80, 0.26), 0 6px 14px rgba(31, 41, 80, 0.07);
+  --sh-sm: 0 1px 2px rgba(31, 41, 80, 0.06);
+  --sh-md: 0 8px 20px -10px rgba(31, 41, 80, 0.2);
+  --sh-lg: 0 16px 36px -16px rgba(31, 41, 80, 0.24);
+  --sh-xl: 0 22px 48px -18px rgba(31, 41, 80, 0.28);
+  --sh-2xl: 0 30px 64px -22px rgba(31, 41, 80, 0.34);
+  /* pastel set for calendar items / chips */
+  --tint-sage: #e1f1e6;
+  --tint-lilac: #e8e6fb;
+  --tint-sky: #ddedfb;
+  --tint-peach: #fde9dd;
+  --tint-butter: #f9f0d2;
+  --tint-rose: #fbe2e6;
 }
 
 .dark {
-  --bg: #0d1117;
-  --surface: #151b23;
-  --surface2: #1b222c;
-  --fg: #e5e9f0;
-  --muted: #98a2b3;
-  --border: #263040;
-  --accent-soft: rgba(45, 175, 165, 0.14);
-  --accent-soft-fg: #7ad6cd;
-  --ring: #45afa6;
+  --canvas:
+    radial-gradient(900px 520px at 8% -10%, rgba(23, 170, 160, 0.11) 0%, transparent 62%),
+    radial-gradient(800px 520px at 104% 0%, rgba(104, 98, 210, 0.11) 0%, transparent 58%),
+    #090b0f;
+  --bg: #090b0f;
+  --surface: #12151b;
+  --surface2: #181c23;
+  --fg: #ecedf1;
+  --muted: #8b92a2;
+  --border: rgba(255, 255, 255, 0.07);
+  --accent-soft: rgba(23, 170, 160, 0.16);
+  --accent-soft-fg: #7fe3d9;
+  --ring: #2cc4b9;
+  --glass: rgba(20, 24, 31, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --sidebar-fg: #c7ccd7;
+  --sidebar-muted: #7d8493;
+  --dock-bg: rgba(28, 32, 40, 0.92);
+  --dock-fg: rgba(255, 255, 255, 0.55);
+  --dock-active-bg: #2cc4b9;
+  --dock-active-fg: #04211f;
   --logo-word: #f9f8f2;
   --logo-emblem: #05bab5;
-  --shadow: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-pop: 0 8px 24px -6px rgb(0 0 0 / 0.5), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+  --sh-card: 0 12px 32px -16px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  --sh-float: 0 22px 44px -14px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --sh-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --sh-md: 0 8px 20px -10px rgba(0, 0, 0, 0.7);
+  --sh-lg: 0 16px 36px -16px rgba(0, 0, 0, 0.75);
+  --sh-xl: 0 22px 48px -18px rgba(0, 0, 0, 0.8);
+  --sh-2xl: 0 30px 64px -22px rgba(0, 0, 0, 0.85);
+  --tint-sage: rgba(112, 190, 140, 0.16);
+  --tint-lilac: rgba(140, 132, 230, 0.18);
+  --tint-sky: rgba(100, 165, 230, 0.16);
+  --tint-peach: rgba(240, 160, 110, 0.16);
+  --tint-butter: rgba(230, 200, 100, 0.15);
+  --tint-rose: rgba(235, 110, 135, 0.16);
+
+  /* Dark theme: the primary (buttons, selections) is the teal of the emblem. */
+  --color-brand-50: #e6f7f6;
+  --color-brand-100: #c2ece9;
+  --color-brand-200: #8edcd6;
+  --color-brand-300: #55c6bf;
+  --color-brand-400: #26b0a8;
+  --color-brand-500: #12968e;
+  --color-brand-600: #0a7f78;
+  --color-brand-700: #09706a;
+  --color-brand-800: #095d58;
+  --color-brand-900: #084c48;
+  --color-blue-50: #e6f7f6;
+  --color-blue-100: #c2ece9;
+  --color-blue-200: #8edcd6;
+  --color-blue-300: #55c6bf;
+  --color-blue-400: #26b0a8;
+  --color-blue-500: #12968e;
+  --color-blue-600: #0a7f78;
+  --color-blue-700: #09706a;
+  --color-blue-800: #095d58;
+  --color-blue-900: #084c48;
 }
 
 @theme inline {
-  --font-sans: 'IBM Plex Sans Arabic', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  --font-sans: 'Readex Pro Variable', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface2: var(--surface2);
@@ -61,58 +122,62 @@
   --color-border: var(--border);
   --color-accent-soft: var(--accent-soft);
   --color-accent-soft-fg: var(--accent-soft-fg);
+  --shadow-sm: var(--sh-sm);
+  --shadow-md: var(--sh-md);
+  --shadow-lg: var(--sh-lg);
+  --shadow-xl: var(--sh-xl);
+  --shadow-2xl: var(--sh-2xl);
 }
 
 @theme {
-  /* Brand: deep teal. The app's "blue-*" classes follow it too, so every screen shares ONE accent. */
-  --color-brand-50: #f0f9f8;
-  --color-brand-100: #d5efec;
-  --color-brand-200: #aadfd9;
-  --color-brand-300: #78c9c1;
-  --color-brand-400: #45afa6;
-  --color-brand-500: #1d948b;
-  --color-brand-600: #0f766e;
-  --color-brand-700: #0d5f59;
-  --color-brand-800: #0e4c48;
-  --color-brand-900: #0f3e3b;
+  /* Primary (light theme): ink. The app's "blue-*" classes follow it, so every screen shares ONE accent. */
+  --color-brand-50: #f5f6f9;
+  --color-brand-100: #e9ebf1;
+  --color-brand-200: #d3d7e1;
+  --color-brand-300: #a9b0c1;
+  --color-brand-400: #6f7890;
+  --color-brand-500: #3d4559;
+  --color-brand-600: #1b1f2b;
+  --color-brand-700: #10131c;
+  --color-brand-800: #0a0c13;
+  --color-brand-900: #05070b;
+  --color-blue-50: #f5f6f9;
+  --color-blue-100: #e9ebf1;
+  --color-blue-200: #d3d7e1;
+  --color-blue-300: #a9b0c1;
+  --color-blue-400: #6f7890;
+  --color-blue-500: #3d4559;
+  --color-blue-600: #1b1f2b;
+  --color-blue-700: #10131c;
+  --color-blue-800: #0a0c13;
+  --color-blue-900: #05070b;
+  --color-blue-950: #020306;
 
-  --color-blue-50: #f0f9f8;
-  --color-blue-100: #d5efec;
-  --color-blue-200: #aadfd9;
-  --color-blue-300: #78c9c1;
-  --color-blue-400: #45afa6;
-  --color-blue-500: #1d948b;
-  --color-blue-600: #0f766e;
-  --color-blue-700: #0d5f59;
-  --color-blue-800: #0e4c48;
-  --color-blue-900: #0f3e3b;
-  --color-blue-950: #0a2f2c;
+  /* Neutrals with a faint cool-lilac undertone. */
+  --color-slate-50: #f8f9fc;
+  --color-slate-100: #f1f2f8;
+  --color-slate-200: #e6e8f0;
+  --color-slate-300: #d0d4e0;
+  --color-slate-400: #9aa1b4;
+  --color-slate-500: #6f768a;
+  --color-slate-600: #4d5468;
+  --color-slate-700: #353b4d;
+  --color-slate-800: #212636;
+  --color-slate-900: #141824;
+  --color-slate-950: #0a0d16;
+  --color-gray-50: #f8f9fc;
+  --color-gray-100: #f1f2f8;
+  --color-gray-200: #e6e8f0;
+  --color-gray-300: #d0d4e0;
+  --color-gray-400: #9aa1b4;
+  --color-gray-500: #6f768a;
+  --color-gray-600: #4d5468;
+  --color-gray-700: #353b4d;
+  --color-gray-800: #212636;
+  --color-gray-900: #141824;
+  --color-gray-950: #0a0d16;
 
-  /* Cool, slightly desaturated neutrals (replace the blue-tinted slate). */
-  --color-slate-50: #f9fafb;
-  --color-slate-100: #f2f4f7;
-  --color-slate-200: #eaecf0;
-  --color-slate-300: #d0d5dd;
-  --color-slate-400: #98a2b3;
-  --color-slate-500: #667085;
-  --color-slate-600: #475467;
-  --color-slate-700: #344054;
-  --color-slate-800: #1d2939;
-  --color-slate-900: #101828;
-  --color-slate-950: #0c111d;
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f2f4f7;
-  --color-gray-200: #eaecf0;
-  --color-gray-300: #d0d5dd;
-  --color-gray-400: #98a2b3;
-  --color-gray-500: #667085;
-  --color-gray-600: #475467;
-  --color-gray-700: #344054;
-  --color-gray-800: #1d2939;
-  --color-gray-900: #101828;
-  --color-gray-950: #0c111d;
-
-  /* Status colours: softer than the defaults, still clearly red / amber / green. */
+  /* Status colours: soft, still clearly red / amber / green. */
   --color-red-50: #fef3f2;
   --color-red-100: #fee4e2;
   --color-red-200: #fecdca;
@@ -144,18 +209,18 @@
   --color-emerald-800: #0c553a;
   --color-emerald-900: #0b4631;
 
-  /* No heavy weights anywhere: bold / extrabold / black all render as semibold. */
-  --font-weight-bold: 600;
-  --font-weight-extrabold: 600;
-  --font-weight-black: 600;
+  /* Gentle weights only: bold / extrabold / black all render as medium-semibold. */
+  --font-weight-bold: 560;
+  --font-weight-extrabold: 560;
+  --font-weight-black: 560;
+  --font-weight-semibold: 520;
+  --font-weight-medium: 440;
 
-  /* Softer corners and shadows. */
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
-  --radius-2xl: 0.875rem;
-  --shadow-lg: 0 4px 12px -2px rgb(16 24 40 / 0.08), 0 2px 4px -2px rgb(16 24 40 / 0.04);
-  --shadow-xl: 0 8px 20px -4px rgb(16 24 40 / 0.1), 0 2px 6px -2px rgb(16 24 40 / 0.05);
-  --shadow-2xl: 0 12px 32px -8px rgb(16 24 40 / 0.14), 0 4px 8px -4px rgb(16 24 40 / 0.06);
+  /* Big, soft corners everywhere. */
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 2rem;
 }
 
 html,
@@ -169,11 +234,12 @@ body {
   font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.65;
+  background: var(--canvas);
   background-color: var(--bg);
+  background-attachment: fixed;
   color: var(--fg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 * {
@@ -184,7 +250,6 @@ body {
   background: color-mix(in srgb, var(--ring) 28%, transparent);
 }
 
-/* One quiet, visible focus style for keyboard users. */
 :focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
@@ -199,18 +264,30 @@ button {
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--muted) 35%, transparent);
+  background: color-mix(in srgb, var(--muted) 30%, transparent);
   border-radius: 8px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--muted) 60%, transparent);
+  background: color-mix(in srgb, var(--muted) 55%, transparent);
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 
+/* Panels: white, big radius, a wide diffused shadow instead of a border. */
 .shadow-card {
-  box-shadow: var(--shadow);
+  box-shadow: var(--sh-card);
+}
+/* Anything that floats above the page (bottom bar, round buttons, sheets). */
+.shadow-float {
+  box-shadow: var(--sh-float);
+}
+/* Frosted glass for floating bars. */
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid var(--glass-border);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -223,19 +300,32 @@ button {
   }
 }
 
-/* Tables everywhere: roomy rows, quiet headers, a soft hover (un-layered so it applies to every page's table). */
+/* Tables everywhere: airy rows, quiet headers, a soft hover. */
 table thead th {
-  font-weight: 500;
+  font-weight: 440;
   color: var(--muted);
-  padding-block: 0.65rem;
+  font-size: 0.78rem;
+  padding-block: 0.7rem;
   white-space: nowrap;
 }
 table tbody td {
-  padding-block: 0.8rem;
+  padding-block: 0.9rem;
+}
+table th,
+table td {
+  padding-inline: 0.7rem;
+}
+table th:first-child,
+table td:first-child {
+  padding-inline-start: 0.2rem;
+}
+table th:last-child,
+table td:last-child {
+  padding-inline-end: 0.2rem;
 }
 table tbody tr {
-  transition: background-color 0.12s ease;
+  transition: background-color 0.15s ease;
 }
 table tbody tr:hover {
-  background-color: color-mix(in srgb, var(--surface2) 80%, transparent);
+  background-color: color-mix(in srgb, var(--surface2) 75%, transparent);
 }

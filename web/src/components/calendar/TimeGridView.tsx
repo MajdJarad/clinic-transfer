@@ -186,7 +186,7 @@ export function TimeGridView({
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-surface">
+    <div className="flex h-full flex-col overflow-hidden rounded-3xl bg-surface shadow-card">
       <div className="flex shrink-0 border-b border-border">
         <div className="w-14 shrink-0" />
         {days.map((day) => {
@@ -239,7 +239,7 @@ export function TimeGridView({
                   {Array.from({ length: HOURS }, (_, h) => (
                     <div
                       key={h}
-                      className="absolute inset-x-0 border-b border-border/70"
+                      className="absolute inset-x-0 border-b border-border"
                       style={{ top: h * hourHeight, height: hourHeight }}
                     />
                   ))}
@@ -249,8 +249,11 @@ export function TimeGridView({
                       className="pointer-events-none absolute inset-x-0 z-20"
                       style={{ top: (minutesSinceMidnight(now) / 60) * hourHeight }}
                     >
-                      <div className="relative border-t-2 border-red-500">
-                        <span className="absolute -end-1 -top-1.5 h-2.5 w-2.5 rounded-full bg-red-500" />
+                      <div className="relative border-t-[1.5px] border-red-500/80">
+                        <span className="absolute -end-1 -top-[5px] h-2 w-2 rounded-full bg-red-500" />
+                        <span className="absolute -top-2.5 start-1 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-medium leading-none text-white shadow-md" dir="ltr">
+                          {String(now.getHours()).padStart(2, '0')}:{String(now.getMinutes()).padStart(2, '0')}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -271,13 +274,13 @@ export function TimeGridView({
                       <div
                         key={trip.id}
                         onPointerDown={(e) => startDrag(e, trip)}
-                        className={`absolute cursor-pointer overflow-hidden rounded-md border-s-[3px] px-2 py-1 text-xs leading-tight text-fg transition-shadow hover:shadow-md ${isDragging ? 'z-30 opacity-90 shadow-lg' : 'z-10'}`}
+                        className={`absolute cursor-pointer overflow-hidden rounded-2xl border-s-[4px] px-3 py-1.5 text-xs leading-tight text-fg transition-shadow hover:shadow-md ${isDragging ? 'z-30 opacity-90 shadow-lg' : 'z-10'}`}
                         style={{
                           top,
                           height,
                           left: `calc(${leftPct}% + 2px)`,
                           width: `calc(${widthPct}% - 4px)`,
-                          backgroundColor: tint(color, 18),
+                          backgroundColor: tint(color, 20),
                           borderInlineStartColor: color,
                           transform: translate,
                         }}

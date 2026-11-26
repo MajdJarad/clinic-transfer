@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Icon } from '../../components/Icon';
 import { api } from '../../api';
 import { Modal } from '../../components/ui';
 import type { AlertItem, AlertType } from '../../types';
@@ -75,15 +76,15 @@ export function DriverAlertButton() {
         {active ? 'أُرسل' : 'إنذار'}
       </button>
 
-      <Modal open={open} title="🚨 إنذار عاجل للمنسق" onClose={() => setOpen(false)}>
+      <Modal open={open} title="إنذار عاجل للمنسق" onClose={() => setOpen(false)}>
         <div className="space-y-4" data-testid="alert-sheet">
           {active && (
             <div className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm dark:bg-red-500/10" data-testid="alert-status">
               <p className="font-black text-red-700 dark:text-red-300">
-                {alertTypeIcon(active.type)} {alertTypeLabel(active.type)}
+                <Icon name={alertTypeIcon(active.type)} inline /> {alertTypeLabel(active.type)}
               </p>
               <p className="mt-1 text-xs font-semibold text-fg">
-                {active.status === 'ACKNOWLEDGED' ? `✓ ${active.acknowledgedBy ?? 'المنسق'} استلم الإنذار وهو يتابع معك` : '⏳ تم الإرسال، بانتظار أن يستلمه المنسق…'}
+                {active.status === 'ACKNOWLEDGED' ? `${active.acknowledgedBy ?? 'المنسق'} استلم الإنذار وهو يتابع معك` : 'تم الإرسال، بانتظار أن يستلمه المنسق…'}
               </p>
               <p className="mt-0.5 text-[11px] text-muted">{ALERT_STATUS_LABEL[active.status]}</p>
             </div>
@@ -102,7 +103,7 @@ export function DriverAlertButton() {
                   type === a.type ? 'border-red-600 bg-red-600 text-white' : 'border-border bg-surface2 text-fg hover:border-red-400'
                 }`}
               >
-                <span className="text-2xl">{a.icon}</span>
+                <Icon name={a.icon} className="h-6 w-6" />
                 {a.label}
               </button>
             ))}
@@ -114,7 +115,7 @@ export function DriverAlertButton() {
             maxLength={500}
             rows={3}
             placeholder="تفاصيل إضافية (اختياري)…"
-            className="w-full rounded-xl border border-border bg-surface2 p-3 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-red-400"
+            className="w-full rounded-2xl bg-surface2 p-3 text-sm text-fg focus:outline-none focus:ring-2 focus:ring-red-400"
             data-testid="alert-note"
           />
           {error && <p className="text-xs font-bold text-red-600">{error}</p>}
@@ -125,7 +126,7 @@ export function DriverAlertButton() {
             className="w-full rounded-xl bg-red-600 py-3.5 text-base font-black text-white shadow-lg shadow-red-600/30 transition hover:bg-red-700 active:scale-[0.99] disabled:opacity-50"
             data-testid="alert-send"
           >
-            {busy ? 'جارٍ الإرسال…' : '🚨 إرسال الإنذار الآن'}
+            {busy ? 'جارٍ الإرسال…' : 'إرسال الإنذار الآن'}
           </button>
           <p className="text-center text-[11px] text-muted">يصل فوراً لكل المنسقين مع موقعك الحالي ورحلتك.</p>
         </div>
