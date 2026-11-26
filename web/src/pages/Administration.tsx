@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Icon } from '../components/Icon';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 import { roleKeys } from '../labels';
@@ -22,10 +23,10 @@ import { MessagesTab, SettingsTab } from './admin/SettingsTabs';
 type Tab = 'users' | 'messages' | 'settings' | 'roles';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'users',    label: 'الحسابات',           icon: '👥' },
-  { id: 'roles',    label: 'الصلاحيات',           icon: '🔐' },
-  { id: 'messages', label: 'رسائل التبليغ',       icon: '💬' },
-  { id: 'settings', label: 'إعدادات التطبيق',     icon: '⚙️' },
+  { id: 'users',    label: 'الحسابات',           icon: 'users' },
+  { id: 'roles',    label: 'الصلاحيات',           icon: 'lock' },
+  { id: 'messages', label: 'رسائل التبليغ',       icon: 'chat' },
+  { id: 'settings', label: 'إعدادات التطبيق',     icon: 'sliders' },
 ];
 
 const ROLES: Role[] = ['ADMIN', 'COORDINATOR', 'DRIVER'];
@@ -275,7 +276,7 @@ function RolesTab() {
             <ul className="space-y-1">
               {info.perms.map((p, i) => (
                 <li key={i} className="flex items-start gap-2 text-sm text-fg">
-                  <span className="mt-0.5 text-green-500">✓</span>
+                  <Icon name="check" className="mt-0.5 h-4 w-4 text-emerald-600" />
                   <span>{p}</span>
                 </li>
               ))}
@@ -311,7 +312,7 @@ export function Administration() {
                 : 'text-muted hover:bg-surface2 hover:text-fg'
             }`}
           >
-            <span>{tab.icon}</span>
+            <Icon name={tab.icon} className="h-4 w-4" />
             <span>{tab.label}</span>
           </button>
         ))}

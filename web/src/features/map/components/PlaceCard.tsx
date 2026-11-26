@@ -1,4 +1,5 @@
 import type { LatLng } from '../routeNav';
+import { Icon } from '../../../components/Icon';
 
 export interface MapPick {
   coord: LatLng;
@@ -31,13 +32,13 @@ export function PlaceCard({ place, view, onClose, onDirections, onUseAsDestinati
           {place.loading ? <span className="animate-pulse text-muted">جارٍ تحديد العنوان…</span> : place.label}
         </p>
         <button type="button" aria-label="إغلاق" onClick={onClose} className="shrink-0 text-xs text-muted hover:text-fg">
-          ✕
+          <Icon name="x" />
         </button>
       </div>
       <div className="mt-2 flex gap-2">
         {view === 'explore' ? (
           <button type="button" disabled={place.loading} onClick={onDirections} data-testid="picked-directions" className={pri}>
-            🧭 الاتجاهات
+            <Icon name="compass" inline /> الاتجاهات
           </button>
         ) : (
           <>
@@ -50,10 +51,10 @@ export function PlaceCard({ place, view, onClose, onDirections, onUseAsDestinati
           </>
         )}
         <button type="button" onClick={onStreetView} title="Street View" data-testid="picked-streetview" className={`${sec} max-w-[3rem]`}>
-          🧍
+          <Icon name="walk" />
         </button>
         <button type="button" onClick={onCopy} title="نسخ رابط الموقع" data-testid="picked-copy" className={`${sec} max-w-[3rem]`}>
-          🔗
+          <Icon name="link" />
         </button>
       </div>
     </div>

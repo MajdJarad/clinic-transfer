@@ -14,6 +14,7 @@ interface NavItem {
   key: string;
   icon: ReactNode;
   adminOnly?: boolean;
+  group: 'ops' | 'watch' | 'resources' | 'admin';
   /** Shows the number of unclaimed driver alerts. */
   alertsBadge?: boolean;
 }
@@ -25,16 +26,16 @@ const icon = (path: ReactNode) => (
 );
 
 const NAV: NavItem[] = [
-  { to: '/', key: 'nav.dashboard', icon: icon(<><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>) },
-  { to: '/trips', key: 'nav.calendar', icon: icon(<><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></>) },
-  { to: '/trips-list', key: 'nav.tripsList', icon: icon(<><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></>) },
-  { to: '/map', key: 'nav.map', icon: icon(<><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" /><line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" /></>) },
-  { to: '/alerts', key: 'nav.alerts', alertsBadge: true, icon: icon(<><path d="M12 3 2 21h20L12 3z" /><path d="M12 10v5M12 18h.01" /></>) },
-  { to: '/tracking', key: 'nav.tracking', icon: icon(<><path d="M12 21s-7-5.3-7-11a7 7 0 0 1 14 0c0 5.7-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></>) },
-  { to: '/drivers', key: 'nav.drivers', icon: icon(<><circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /></>) },
-  { to: '/vehicles', key: 'nav.vehicles', icon: icon(<><path d="M5 16l1.5-5A2 2 0 0 1 8.4 9.5h7.2a2 2 0 0 1 1.9 1.5L19 16" /><path d="M5 16h14v3H5z" /><circle cx="7.5" cy="19.5" r="1.5" /><circle cx="16.5" cy="19.5" r="1.5" /></>) },
-  { to: '/maintenance', key: 'nav.maintenance', icon: icon(<path d="M14.7 6.3a3.5 3.5 0 0 1-4.6 4.6L5 16v3h3l5.1-5.1a3.5 3.5 0 0 1 4.6-4.6l-2.3 2.3 1.7 1.7 2.3-2.3a3.5 3.5 0 0 1-4.7-1.8z" />) },
-  { to: '/admin', key: 'nav.admin', icon: icon(<><circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /><path d="M19 11l-2 2-2-2M19 11v4" /></>), adminOnly: true },
+  { group: 'ops', to: '/', key: 'nav.dashboard', icon: icon(<><rect x="3" y="3" width="7" height="9" rx="1.5" /><rect x="14" y="3" width="7" height="5" rx="1.5" /><rect x="14" y="12" width="7" height="9" rx="1.5" /><rect x="3" y="16" width="7" height="5" rx="1.5" /></>) },
+  { group: 'ops', to: '/trips', key: 'nav.calendar', icon: icon(<><rect x="3" y="4" width="18" height="17" rx="2" /><path d="M3 9h18M8 2v4M16 2v4" /></>) },
+  { group: 'ops', to: '/trips-list', key: 'nav.tripsList', icon: icon(<><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" /></>) },
+  { group: 'ops', to: '/map', key: 'nav.map', icon: icon(<><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" /><line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" /></>) },
+  { group: 'watch', to: '/alerts', key: 'nav.alerts', alertsBadge: true, icon: icon(<><path d="M12 3 2 21h20L12 3z" /><path d="M12 10v5M12 18h.01" /></>) },
+  { group: 'watch', to: '/tracking', key: 'nav.tracking', icon: icon(<><path d="M12 21s-7-5.3-7-11a7 7 0 0 1 14 0c0 5.7-7 11-7 11z" /><circle cx="12" cy="10" r="2.5" /></>) },
+  { group: 'resources', to: '/drivers', key: 'nav.drivers', icon: icon(<><circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /></>) },
+  { group: 'resources', to: '/vehicles', key: 'nav.vehicles', icon: icon(<><path d="M5 16l1.5-5A2 2 0 0 1 8.4 9.5h7.2a2 2 0 0 1 1.9 1.5L19 16" /><path d="M5 16h14v3H5z" /><circle cx="7.5" cy="19.5" r="1.5" /><circle cx="16.5" cy="19.5" r="1.5" /></>) },
+  { group: 'resources', to: '/maintenance', key: 'nav.maintenance', icon: icon(<path d="M14.7 6.3a3.5 3.5 0 0 1-4.6 4.6L5 16v3h3l5.1-5.1a3.5 3.5 0 0 1 4.6-4.6l-2.3 2.3 1.7 1.7 2.3-2.3a3.5 3.5 0 0 1-4.7-1.8z" />) },
+  { group: 'admin', to: '/admin', key: 'nav.admin', icon: icon(<><circle cx="12" cy="8" r="3.5" /><path d="M5 20a7 7 0 0 1 14 0" /><path d="M19 11l-2 2-2-2M19 11v4" /></>), adminOnly: true },
 ];
 
 export function AdminLayout({ children }: { children: ReactNode }) {
@@ -61,43 +62,54 @@ function LayoutInner({ children }: { children: ReactNode }) {
   const items = NAV.filter((n) => !n.adminOnly || user?.role === 'ADMIN');
 
   const linkClass = (isActive: boolean) =>
-    `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition ${
+    `group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13.5px] font-medium transition ${
       isActive
-        ? 'bg-accent-soft text-accent-soft-fg'
-        : 'text-muted hover:bg-surface2 hover:text-fg'
+        ? 'bg-[var(--sidebar-active)] text-white before:absolute before:inset-y-2 before:start-0 before:w-[3px] before:rounded-full before:bg-[var(--brass)]'
+        : 'text-[var(--sidebar-fg)] hover:bg-white/5 hover:text-white'
     }`;
+  const sections = (['ops', 'watch', 'resources', 'admin'] as const)
+    .map((g) => ({ g, list: items.filter((n) => n.group === g) }))
+    .filter((x) => x.list.length > 0);
 
   return (
     <div className="min-h-full">
-      <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col border-e border-border bg-surface md:flex">
-        {/* Brand: the horizontal logo (emblem + MEDICO, CLINIC under it) */}
-        <div className="flex h-14 items-center border-b border-border px-5" dir="ltr">
-          <Logo className="h-8 w-auto" />
+      <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 flex-col md:flex" style={{ background: 'var(--sidebar-bg)' }}>
+        {/* Brand: the horizontal logo on the brand navy */}
+        <div className="px-6 pb-3 pt-6" dir="ltr">
+          <Logo className="h-9 w-auto [--logo-emblem:#05BAB5] [--logo-word:#F9F8F2]" />
         </div>
+        <p className="px-6 pb-2 text-[11px] font-medium tracking-wide text-[var(--sidebar-muted)]">{t('common.app')}</p>
 
-        <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
-          {items.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.to === '/'} className={({ isActive }) => linkClass(isActive)}>
-              {item.icon}
-              <span className="truncate">{t(item.key)}</span>
-              {item.alertsBadge && <Badge />}
-            </NavLink>
+        <nav className="flex-1 overflow-y-auto px-3 pb-3">
+          {sections.map(({ g, list }) => (
+            <div key={g}>
+              <p className="px-3 pb-1.5 pt-5 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-[var(--sidebar-muted)]">{t(`nav.group.${g}`)}</p>
+              <div className="space-y-0.5">
+                {list.map((item) => (
+                  <NavLink key={item.to} to={item.to} end={item.to === '/'} className={({ isActive }) => linkClass(isActive)}>
+                    {item.icon}
+                    <span className="truncate">{t(item.key)}</span>
+                    {item.alertsBadge && <Badge />}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
-        <div className="border-t border-border p-3">
+        <div className="border-t border-[var(--sidebar-line)] p-3">
           <div className="mb-1 flex items-center gap-3 rounded-lg px-2 py-2">
-            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-semibold text-accent-soft-fg">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/10 text-sm font-semibold text-white">
               {user?.name?.charAt(0) ?? '?'}
             </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-fg">{user?.name}</p>
-              <p className="truncate text-xs text-muted">{user ? t(roleKeys[user.role]) : ''}</p>
+            <div className="min-w-0 leading-tight">
+              <p className="truncate text-sm font-medium text-white">{user?.name}</p>
+              <p className="truncate text-xs text-[var(--sidebar-muted)]">{user ? t(roleKeys[user.role]) : ''}</p>
             </div>
           </div>
           <button
             onClick={logout}
-            className="w-full rounded-lg px-3 py-1.5 text-start text-sm text-muted transition hover:bg-surface2 hover:text-red-600"
+            className="w-full rounded-lg px-3 py-1.5 text-start text-sm text-[var(--sidebar-fg)] transition hover:bg-white/5 hover:text-white"
           >
             {t('common.logout')}
           </button>

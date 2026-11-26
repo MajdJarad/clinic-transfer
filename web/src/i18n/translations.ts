@@ -16,6 +16,10 @@ export const LOCALES: LocaleMeta[] = [
 type Dict = Record<string, string>;
 
 const ar: Dict = {
+  'nav.group.ops': 'التشغيل',
+  'nav.group.watch': 'المتابعة',
+  'nav.group.resources': 'الموارد',
+  'nav.group.admin': 'الإدارة',
   'common.app': 'نقل المرضى',
   'common.clinic': 'MEDICO CLINIC',
   'common.save': 'حفظ',
@@ -314,6 +318,10 @@ const ar: Dict = {
 };
 
 const en: Dict = {
+  'nav.group.ops': 'Operations',
+  'nav.group.watch': 'Monitoring',
+  'nav.group.resources': 'Resources',
+  'nav.group.admin': 'Administration',
   'common.app': 'Patient Transfer',
   'common.clinic': 'MEDICO CLINIC',
   'common.save': 'Save',
@@ -612,6 +620,10 @@ const en: Dict = {
 };
 
 const tr: Dict = {
+  'nav.group.ops': 'Operasyon',
+  'nav.group.watch': 'Takip',
+  'nav.group.resources': 'Kaynaklar',
+  'nav.group.admin': 'Yönetim',
   'common.app': 'Hasta Transferi',
   'common.clinic': 'MEDICO CLINIC',
   'common.save': 'Kaydet',

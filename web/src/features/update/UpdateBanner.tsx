@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Icon } from '../../components/Icon';
 
 /** The hashed main script this page was loaded with, e.g. "index-DHL2oJty" (null in dev). */
 function loadedBuild(): string | null {
@@ -46,7 +47,7 @@ export function UpdateBanner() {
       data-testid="update-banner"
       className="fixed inset-x-3 bottom-3 z-[100] mx-auto flex max-w-md items-center justify-between gap-3 rounded-xl bg-blue-700 px-4 py-3 text-sm font-semibold text-white shadow-2xl"
     >
-      <span>🔄 يتوفر إصدار أحدث من التطبيق</span>
+      <span><Icon name="refresh" inline />يتوفر إصدار أحدث من التطبيق</span>
       <button type="button" onClick={() => window.location.reload()} className="rounded-lg bg-white px-3 py-1 text-xs font-black text-blue-700" data-testid="update-reload">
         تحديث الآن
       </button>

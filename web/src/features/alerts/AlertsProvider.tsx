@@ -66,7 +66,7 @@ export function AlertsProvider({ children }: { children: ReactNode }) {
     let on = false;
     const flash = setInterval(() => {
       on = !on;
-      document.title = on ? `🚨 إنذار عاجل (${openCount})` : original;
+      document.title = on ? `إنذار عاجل (${openCount})` : original;
     }, 1000);
     return () => {
       clearInterval(siren);

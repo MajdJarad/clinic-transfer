@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Icon } from '../components/Icon';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
@@ -257,12 +258,12 @@ export function DriverApp() {
           ) : (
             <span className="shrink-0 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800 dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-200" data-testid="share-problem">
               {share.state === 'denied'
-                ? '⚠️ فعّل إذن الموقع'
+                ? 'فعّل إذن الموقع'
                 : share.state === 'unavailable'
-                  ? '⚠️ الموقع غير متاح'
+                  ? 'الموقع غير متاح'
                   : share.state === 'error'
-                    ? '⚠️ موقعك لا يصل للمنسق'
-                    : '📡 …'}
+                    ? 'موقعك لا يصل للمنسق'
+                    : '…'}
             </span>
           )}
           <DriverAlertButton />
@@ -294,9 +295,9 @@ export function DriverApp() {
         {/* ─── Tabs (desktop; on a phone the bottom bar does this) ─── */}
         <div className="mx-4 mt-2.5 hidden gap-1 rounded-lg bg-surface2 p-1 md:flex">
           {[
-            { id: 'calendar', label: 'التقويم', icon: '📅' },
-            { id: 'navigation', label: 'الملاحة', icon: '🧭' },
-            { id: 'maintenance', label: 'الصيانة والأعطال', icon: '🔧' },
+            { id: 'calendar', label: 'التقويم', icon: 'calendar' },
+            { id: 'navigation', label: 'الملاحة', icon: 'compass' },
+            { id: 'maintenance', label: 'الصيانة والأعطال', icon: 'wrench' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -305,7 +306,7 @@ export function DriverApp() {
                 activeTab === tab.id ? 'bg-surface text-accent-soft-fg shadow-sm' : 'text-muted hover:text-fg'
               }`}
             >
-              <span>{tab.icon}</span>
+              <Icon name={tab.icon} className="h-4 w-4" />
               <span>{tab.label}</span>
             </button>
           ))}
@@ -316,13 +317,13 @@ export function DriverApp() {
           say plainly when it is not, instead of showing an empty, silent app. */}
       {!driverId && (
         <div className="m-3 rounded-xl border border-red-400/50 bg-red-500/10 p-3 text-xs font-bold text-red-700 dark:text-red-300" data-testid="driver-unlinked">
-          ⚠️ هذا الحساب غير مرتبط بملف سائق في قاعدة البيانات، فلن تصلك رحلات ولن يظهر موقعك. اطلب من المسؤول ربطه بسائق، أو سجّل الدخول بحساب سائق آخر.
+          <Icon name="alert" inline /> هذا الحساب غير مرتبط بملف سائق في قاعدة البيانات، فلن تصلك رحلات ولن يظهر موقعك. اطلب من المسؤول ربطه بسائق، أو سجّل الدخول بحساب سائق آخر.
         </div>
       )}
       {driverId && (loadError || share.state === 'error') && (
         <div className="m-3 flex items-center justify-between gap-3 rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-xs font-bold text-amber-800 dark:text-amber-200" data-testid="driver-sync-error">
           <span>
-            ⚠️ {loadError ? 'تعذّر تحميل رحلاتك من الخادم' : 'تعذّر إرسال موقعك للمنسق'}. تأكد من الاتصال بالإنترنت؛ وإن استمر ذلك سجّل الخروج ثم الدخول من جديد.
+            <Icon name="alert" inline /> {loadError ? 'تعذّر تحميل رحلاتك من الخادم' : 'تعذّر إرسال موقعك للمنسق'}. تأكد من الاتصال بالإنترنت؛ وإن استمر ذلك سجّل الخروج ثم الدخول من جديد.
           </span>
           <button type="button" onClick={loadDriver} className="shrink-0 rounded-lg bg-amber-600 px-3 py-1 text-white" data-testid="driver-sync-retry">
             إعادة المحاولة
@@ -403,7 +404,7 @@ export function DriverApp() {
                     data-testid={`day-trip-${tr.id}`}
                   >
                     <span className="block text-xs font-black text-fg">
-                      🕓 {new Date(tr.scheduledAt).toLocaleTimeString(intl, { hour: '2-digit', minute: '2-digit' })} • {tr.patientName}
+                      <Icon name="clock" inline /> {new Date(tr.scheduledAt).toLocaleTimeString(intl, { hour: '2-digit', minute: '2-digit' })} • {tr.patientName}
                     </span>
                     <span className="block max-w-[15rem] truncate text-[11px] text-muted">
                       {tr.origin} ← {tr.destination}
@@ -456,7 +457,7 @@ export function DriverApp() {
 
             {/* Helper Hint */}
             <p className="text-[11px] text-muted text-center">
-              💡 اضغط على أي رحلة في التقويم لعرض تفاصيلها والضغط على <strong>«انطلاق للملاحة 🧭»</strong> للبدء فوراً.
+              <Icon name="info" inline /> اضغط على أي رحلة في التقويم لعرض تفاصيلها والضغط على <strong>«انطلاق للملاحة»</strong> للبدء فوراً.
             </p>
           </div>
         )}
@@ -499,7 +500,7 @@ export function DriverApp() {
               <div className="flex items-center justify-between pt-2 border-t border-border/60">
                 <span className="text-xs text-muted">حالة السيارة الحالية:</span>
                 <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-600">
-                  {driver?.vehicle?.status === 'MAINTENANCE' ? 'قيد الصيانة 🔧' : 'نشطة وجاهزة للخدمة ✓'}
+                  {driver?.vehicle?.status === 'MAINTENANCE' ? 'قيد الصيانة' : 'نشطة وجاهزة للخدمة'}
                 </span>
               </div>
             </Card>
@@ -543,7 +544,7 @@ export function DriverApp() {
                             : 'bg-amber-500/10 text-amber-600'
                         }`}
                       >
-                        {m.status === 'DONE' ? 'مكتملة ✓' : m.status === 'IN_PROGRESS' ? 'قيد الصيانة' : 'مجدولة'}
+                        {m.status === 'DONE' ? 'مكتملة' : m.status === 'IN_PROGRESS' ? 'قيد الصيانة' : 'مجدولة'}
                       </span>
                     </div>
 
@@ -565,9 +566,9 @@ export function DriverApp() {
       {/* ─── Bottom Navigation Bar (Mobile Friendly) ─── */}
       <nav ref={navBarRef} className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-border bg-surface py-1.5 md:hidden">
         {[
-          { id: 'calendar', label: 'التقويم', icon: '📅' },
-          { id: 'navigation', label: 'الملاحة', icon: '🧭' },
-          { id: 'maintenance', label: 'الصيانة', icon: '🔧' },
+          { id: 'calendar', label: 'التقويم', icon: 'calendar' },
+          { id: 'navigation', label: 'الملاحة', icon: 'compass' },
+          { id: 'maintenance', label: 'الصيانة', icon: 'wrench' },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -576,7 +577,7 @@ export function DriverApp() {
               activeTab === tab.id ? 'text-brand-600' : 'text-muted hover:text-fg'
             }`}
           >
-            <span className="text-lg">{tab.icon}</span>
+            <Icon name={tab.icon} className="h-5 w-5" />
             <span>{tab.label}</span>
           </button>
         ))}
@@ -591,7 +592,7 @@ export function DriverApp() {
         onNavigate={(tr) => startNavForTrip(tr)}
         onNotifyPatient={async (tr) => {
           const r = await api.trips.notifyPatient(tr.id);
-          return r.status === 'requested' ? '✓ أُبلغ المنسق ليرسل الرسالة للمريض' : '✓ أُرسلت الرسالة للمريض';
+          return r.status === 'requested' ? 'أُبلغ المنسق ليرسل الرسالة للمريض' : 'أُرسلت الرسالة للمريض';
         }}
       />
 

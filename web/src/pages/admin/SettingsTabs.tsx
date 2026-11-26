@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Icon } from '../../components/Icon';
 import { api } from '../../api';
 import { refreshConfig } from '../../config';
 import { Button, Card, EmptyState, ErrorText, Field, Input, Textarea } from '../../components/ui';
@@ -41,7 +42,7 @@ function SaveBar({ busy, saved, onSave, onReset, error }: { busy: boolean; saved
           استعادة القيم الافتراضية
         </Button>
         <Button onClick={onSave} loading={busy} className="min-w-[140px]" data-testid="settings-save">
-          {saved ? '✓ تم الحفظ' : 'حفظ'}
+          {saved ? 'تم الحفظ' : 'حفظ'}
         </Button>
       </div>
     </div>
@@ -160,7 +161,7 @@ export function MessagesTab() {
         </Field>
         {unknown.length > 0 && (
           <p className="mt-2 text-xs text-amber-600" data-testid="template-unknown">
-            ⚠️ متغيرات غير معروفة ستصل للمريض كما هي: {unknown.map((u) => `{${u}}`).join(' ')}
+            <Icon name="alert" inline /> متغيرات غير معروفة ستصل للمريض كما هي: {unknown.map((u) => `{${u}}`).join(' ')}
           </p>
         )}
       </Card>
@@ -246,7 +247,7 @@ export function SettingsTab() {
     <div className="space-y-5">
       <Card className="space-y-4 p-5">
         <div className="border-b border-border pb-2.5">
-          <h3 className="text-sm font-bold text-fg">🏥 بيانات العيادة</h3>
+          <h3 className="text-sm font-bold text-fg"><Icon name="clinic" inline /> بيانات العيادة</h3>
           <p className="text-xs text-muted">تظهر في الشريط الجانبي وصفحة الدخول وعنوان التبويب.</p>
         </div>
         <div className="grid gap-4">
@@ -258,7 +259,7 @@ export function SettingsTab() {
 
       <Card className="space-y-4 p-5">
         <div className="border-b border-border pb-2.5">
-          <h3 className="text-sm font-bold text-fg">🗺️ الخريطة</h3>
+          <h3 className="text-sm font-bold text-fg"><Icon name="map" inline /> الخريطة</h3>
           <p className="text-xs text-muted">المكان الذي تفتح عليه الخريطة، ومنه يُفضَّل البحث عن الأماكن.</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -279,7 +280,7 @@ export function SettingsTab() {
       <Card className="space-y-3 p-5">
         <span data-testid="system-status" className="hidden" />
         <div className="border-b border-border pb-2.5">
-          <h3 className="text-sm font-bold text-fg">🖥️ حالة النظام</h3>
+          <h3 className="text-sm font-bold text-fg"><Icon name="shield" inline /> حالة النظام</h3>
           <p className="text-xs text-muted">للقراءة فقط، من الخادم الفعلي. تُضبط من إعدادات الاستضافة (متغيرات البيئة).</p>
         </div>
         <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
@@ -289,9 +290,9 @@ export function SettingsTab() {
             ['مدة التشغيل', fmtUptime(sys.uptimeSeconds)],
             ['Node', sys.node],
             ['قاعدة البيانات', `${sys.database.provider} (${sys.database.file})`],
-            ['خرائط Google', sys.google.mapsConfigured ? '✅ مفتاح الخادم مضبوط' : '❌ المفتاح غير مضبوط (GOOGLE_MAPS_API_KEY)'],
-            ['خريطة متجهة (Map ID)', sys.google.mapIdConfigured ? '✅ مفعّل (تدوير مع اتجاه السير)' : 'غير مضبوط (اختياري: GOOGLE_MAP_ID)'],
-            ['تتبع Traccar', sys.traccarEnabled ? '✅ مفعّل' : 'غير مفعّل'],
+            ['خرائط Google', sys.google.mapsConfigured ? 'مفتاح الخادم مضبوط' : 'المفتاح غير مضبوط (GOOGLE_MAPS_API_KEY)'],
+            ['خريطة متجهة (Map ID)', sys.google.mapIdConfigured ? 'مفعّل (تدوير مع اتجاه السير)' : 'غير مضبوط (اختياري: GOOGLE_MAP_ID)'],
+            ['تتبع Traccar', sys.traccarEnabled ? 'مفعّل' : 'غير مفعّل'],
           ] as const).map(([k, v]) => (
             <div key={k} className="flex items-baseline justify-between gap-3 rounded-lg bg-surface2 px-3 py-2">
               <dt className="text-xs text-muted">{k}</dt>
@@ -301,7 +302,7 @@ export function SettingsTab() {
         </dl>
         {sys.database.mayBeEphemeral && (
           <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs leading-relaxed text-amber-700 dark:text-amber-300" data-testid="ephemeral-warning">
-            ⚠️ قاعدة البيانات ملف داخل حاوية الخادم. على الاستضافات المجانية يُفقد هذا الملف (الرحلات والإعدادات) عند كل نشر أو إعادة تشغيل. لحفظ البيانات
+            <Icon name="alert" inline /> قاعدة البيانات ملف داخل حاوية الخادم. على الاستضافات المجانية يُفقد هذا الملف (الرحلات والإعدادات) عند كل نشر أو إعادة تشغيل. لحفظ البيانات
             أضف قرصاً دائماً واضبط <code dir="ltr">DATABASE_URL=file:/data/clinic.db</code>.
           </p>
         )}

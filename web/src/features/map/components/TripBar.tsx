@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Icon } from '../../../components/Icon';
 import { api } from '../../../api';
 import { StatusPill } from '../../../components/ui';
 import type { Trip } from '../../../types';
@@ -26,7 +27,7 @@ export function TripBar({ trip, onGo, canGo, statusLabel }: TripBarProps) {
     setNotice('');
     try {
       const r = await api.trips.notifyPatient(trip.id);
-      setNotice(r.status === 'requested' ? '✓ أُبلغ المنسق ليرسل الرسالة للمريض' : '✓ أُرسلت الرسالة للمريض');
+      setNotice(r.status === 'requested' ? 'أُبلغ المنسق ليرسل الرسالة للمريض' : 'أُرسلت الرسالة للمريض');
     } catch (e) {
       setNotice(e instanceof Error ? e.message : 'تعذّر إرسال الرسالة');
     } finally {
@@ -38,7 +39,7 @@ export function TripBar({ trip, onGo, canGo, statusLabel }: TripBarProps) {
     <div className="space-y-2 rounded-xl border border-border bg-surface2/70 p-2.5" data-testid="trip-bar">
       <div className="flex items-center justify-between gap-2">
         <div className={`min-w-0 text-xs font-bold ${toDestination ? 'text-emerald-700' : 'text-blue-700'}`} data-testid="trip-stage">
-          <span>{toDestination ? '🏥' : '🧑‍⚕️'} </span>
+          <Icon name={toDestination ? 'clinic' : 'heart'} inline />
           <span className="truncate">
             {toDestination ? 'التوجه إلى الوجهة' : 'التوجه إلى المريض'} • {trip.patientName}
           </span>
@@ -53,7 +54,7 @@ export function TripBar({ trip, onGo, canGo, statusLabel }: TripBarProps) {
           className="flex-1 rounded-lg bg-blue-600 px-2 py-2 text-xs font-bold text-white disabled:opacity-50"
           data-testid="trip-go"
         >
-          🧭 انطلاق
+          <Icon name="compass" inline /> انطلاق
         </button>
         {!toDestination && (
           <button
@@ -63,7 +64,7 @@ export function TripBar({ trip, onGo, canGo, statusLabel }: TripBarProps) {
             className="flex-1 rounded-lg bg-emerald-600 px-2 py-2 text-xs font-bold text-white disabled:opacity-60"
             data-testid="trip-notify"
           >
-            {busy ? '…' : '📨 تبليغ المريض'}
+            {busy ? '…' : <><Icon name="send" inline />تبليغ المريض</>}
           </button>
         )}
       </div>

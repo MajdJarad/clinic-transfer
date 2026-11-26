@@ -354,10 +354,10 @@ export function MapScreen({ className, trip: driverTrip, onStartTrip }: MapScree
   const secondaryAction =
     driverTrip && driverMode && ['ASSIGNED', 'EN_ROUTE', 'ARRIVED'].includes(driverTrip.status)
       ? {
-          label: '📨 إشعار المريض بوصول السيارة',
+          label: 'إشعار المريض بوصول السيارة',
           run: async () => {
             const r = await api.trips.notifyPatient(driverTrip.id);
-            return r.status === 'requested' ? '✓ أُبلغ المنسق ليرسل الرسالة للمريض' : '✓ أُرسلت الرسالة للمريض';
+            return r.status === 'requested' ? 'أُبلغ المنسق ليرسل الرسالة للمريض' : 'أُرسلت الرسالة للمريض';
           },
         }
       : undefined;

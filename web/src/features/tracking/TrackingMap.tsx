@@ -37,7 +37,7 @@ function carHtml(d: TrackingDriver, selected: boolean): string {
   const quietFor = level === 'stale' && d.ageSeconds != null ? escapeHtml(ageLabel(d.ageSeconds)) : '';
   const heading = level === 'live' || level === 'recent' ? (d.heading ?? 0) : 0;
   const ring = selected
-    ? '<div style="position:absolute;inset:-9px;border-radius:50%;border:3px solid #2563eb;background:rgba(37,99,235,.12)"></div>'
+    ? '<div style="position:absolute;inset:-9px;border-radius:50%;border:3px solid #c9a66b;background:rgba(201,166,107,.16)"></div>'
     : level === 'live'
       ? '<div style="position:absolute;inset:-4px;border-radius:50%;animation:drvPulse 2s infinite"></div>'
       : '';
@@ -52,7 +52,7 @@ function carHtml(d: TrackingDriver, selected: boolean): string {
       <path d="M8.5 33H19.5L21 37Q14 40 7 37Z" fill="#dbeafe"/>
       <circle cx="8.5" cy="4.6" r="1.6" fill="#fde047"/><circle cx="19.5" cy="4.6" r="1.6" fill="#fde047"/>
     </svg>
-    <div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;background:#0f172a;color:#fff;border:2px solid ${selected ? '#2563eb' : color};border-radius:8px;padding:1px 7px;font:800 12px/16px system-ui,sans-serif;letter-spacing:.5px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.45)">${letters}</div>${quietFor ? `<div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:25px;background:rgba(255,255,255,.95);color:#374151;border-radius:6px;padding:0 6px;font:700 10px/15px system-ui,sans-serif;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.35)">${quietFor}</div>` : ''}
+    <div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;background:#141a27;color:#fff;border:2px solid ${selected ? '#c9a66b' : color};border-radius:8px;padding:1px 7px;font:800 12px/16px system-ui,sans-serif;letter-spacing:.5px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.45)">${letters}</div>${quietFor ? `<div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:25px;background:rgba(255,255,255,.95);color:#374151;border-radius:6px;padding:0 6px;font:700 10px/15px system-ui,sans-serif;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.35)">${quietFor}</div>` : ''}
   </div>`;
 }
 

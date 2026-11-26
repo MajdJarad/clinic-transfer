@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Icon } from '../components/Icon';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { useI18n } from '../i18n';
@@ -187,7 +188,7 @@ export function Vehicles() {
       <Card className="p-4 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="relative flex-1 min-w-[220px]">
-            <span className="absolute inset-y-0 start-3 flex items-center text-muted">🔍</span>
+            <span className="absolute inset-y-0 start-3 flex items-center text-muted"><Icon name="search" /></span>
             <input
               type="text"
               value={search}
@@ -200,7 +201,7 @@ export function Vehicles() {
                 onClick={() => setSearch('')}
                 className="absolute inset-y-0 end-3 text-xs text-muted hover:text-fg"
               >
-                ✕
+                <Icon name="x" />
               </button>
             )}
           </div>
@@ -255,7 +256,7 @@ export function Vehicles() {
                     <td className="py-3 font-semibold text-fg">
                       <div className="flex items-center gap-2">
                         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 font-bold text-xs">
-                          🚗
+                          <Icon name="car" className="h-5 w-5" />
                         </span>
                         <span>{v.make} {v.model}</span>
                       </div>
@@ -287,7 +288,7 @@ export function Vehicles() {
                     <td className="py-3">
                       <div className="flex items-center gap-1.5">
                         <Button size="sm" variant="secondary" onClick={() => openEdit(v)}>
-                          ✏️ تعديل
+                          <Icon name="edit" inline /> تعديل
                         </Button>
                         <Button
                           size="sm"
@@ -297,7 +298,7 @@ export function Vehicles() {
                             setAssignDriverId(v.driver?.id ?? '');
                           }}
                         >
-                          👤 {v.driver ? 'عزل' : 'إسناد'}
+                          <Icon name="user" inline /> {v.driver ? 'عزل' : 'إسناد'}
                         </Button>
                         {user?.role === 'ADMIN' && (
                           <Button
@@ -307,7 +308,7 @@ export function Vehicles() {
                             onClick={() => deleteVehicle(v)}
                             title="حذف السيارة"
                           >
-                            🗑️
+                            <Icon name="trash" />
                           </Button>
                         )}
                       </div>

@@ -1,4 +1,5 @@
 import { PlaceInput, type PickedPlace } from '../PlaceInput';
+import { Icon } from '../../../components/Icon';
 
 interface ExploreBarProps {
   value: string;
@@ -15,7 +16,7 @@ export function ExploreBar({ value, onChange, onPick, onClear, onDirections }: E
       <div className="min-w-0 flex-1">
         <PlaceInput
           value={value}
-          badge="🔍"
+          badge={<Icon name="search" />}
           badgeClass="!bg-transparent !text-muted"
           placeholder="ابحث في الخرائط…"
           onChange={onChange}
@@ -31,7 +32,7 @@ export function ExploreBar({ value, onChange, onPick, onClear, onDirections }: E
         data-testid="open-directions"
         className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-600 text-lg text-white shadow-lg shadow-blue-600/30 transition hover:bg-blue-700 active:scale-95"
       >
-        🧭
+        <Icon name="compass" />
       </button>
     </div>
   );

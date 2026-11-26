@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Icon } from '../../../components/Icon';
 
 export const MAP_TYPES = {
   roadmap: 'خريطة شوارع',
@@ -9,10 +10,12 @@ export type MapTypeKey = keyof typeof MAP_TYPES;
 export type LayerKey = 'traffic' | 'transit' | 'bicycling';
 
 const LAYER_LABELS: Record<LayerKey, string> = {
-  traffic: '🚦 حركة المرور',
-  transit: '🚇 المواصلات العامة',
-  bicycling: '🚲 مسارات الدراجات',
+  traffic: 'حركة المرور',
+  transit: 'المواصلات العامة',
+  bicycling: 'مسارات الدراجات',
 };
+
+const LAYER_ICONS: Record<LayerKey, string> = { traffic: 'traffic', transit: 'train', bicycling: 'bike' };
 
 interface MapControlsProps {
   ready: boolean;
@@ -44,7 +47,7 @@ export function MapControls(p: MapControlsProps) {
           data-testid="layers-button"
           className="flex h-9 w-9 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface/95 p-2 text-xs font-semibold text-fg shadow-xl backdrop-blur-md transition hover:bg-surface2 sm:h-auto sm:w-auto sm:justify-start sm:px-2.5 sm:py-1.5"
         >
-          <span className="text-base sm:text-sm">🗺️</span>
+          <Icon name="layers" className="h-[18px] w-[18px] sm:h-4 sm:w-4" />
           <span className="hidden sm:inline">
             {MAP_TYPES[p.mapType]}
             {activeLayers > 0 ? ` +${activeLayers}` : ''}
@@ -73,8 +76,8 @@ export function MapControls(p: MapControlsProps) {
                   aria-pressed={p.layers[k]}
                   className={`${i === 0 ? 'mt-1 border-t border-border' : ''} flex items-center justify-between rounded-lg px-2.5 py-1.5 text-start text-xs font-medium transition ${p.layers[k] ? 'bg-amber-600 font-bold text-white' : 'text-fg hover:bg-surface2'}`}
                 >
-                  <span>{LAYER_LABELS[k]}</span>
-                  {p.layers[k] && <span>✓</span>}
+                  <span className="flex items-center gap-2"><Icon name={LAYER_ICONS[k]} className="h-4 w-4" />{LAYER_LABELS[k]}</span>
+                  {p.layers[k] && <Icon name="check" className="h-4 w-4" />}
                 </button>
               ))}
           </div>
@@ -83,16 +86,16 @@ export function MapControls(p: MapControlsProps) {
 
       <div className="flex flex-col rounded-xl border border-border bg-surface/95 shadow-xl backdrop-blur-md">
         <button type="button" onClick={p.onLocate} title="موقعي الحالي" data-testid="locate-me" className={`${btn} border-b border-border !text-blue-600`}>
-          📍
+          <Icon name="pin" className="h-[18px] w-[18px]" />
         </button>
         <button type="button" onClick={p.onStreetView} title="Street View" data-testid="streetview-button" className={`${btn} border-b border-border`}>
-          🧍
+          <Icon name="walk" className="h-[18px] w-[18px]" />
         </button>
         <button type="button" onClick={p.onFit} title="تركيز على المسار" className={`${btn} border-b border-border`}>
-          🎯
+          <Icon name="target" className="h-[18px] w-[18px]" />
         </button>
         <button type="button" onClick={p.onToggleFullscreen} title={p.isFullscreen ? 'تصغير' : 'ملء الشاشة'} className={btn}>
-          {p.isFullscreen ? '🗗' : '⛶'}
+          <Icon name={p.isFullscreen ? 'shrink' : 'expand'} className="h-[18px] w-[18px]" />
         </button>
       </div>
 

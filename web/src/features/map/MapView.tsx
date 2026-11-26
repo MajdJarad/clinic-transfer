@@ -55,7 +55,7 @@ export function MapView({
       const marker = createHtmlMarker(
         g,
         { lat: p.lat, lng: p.lng },
-        pinHtml(p.color ?? '#2563eb', `${p.title}${p.subtitle ? ` - ${p.subtitle}` : ''}`, undefined, dir),
+        pinHtml(p.color ?? '#232d44', `${p.title}${p.subtitle ? ` - ${p.subtitle}` : ''}`, undefined, dir),
         info
           ? () => {
               info.setPosition({ lat: p.lat, lng: p.lng });
@@ -92,7 +92,7 @@ export function MapView({
       }));
       routeRef.current = new g.maps.Polyline({
         path,
-        strokeColor: '#2563eb',
+        strokeColor: '#232d44',
         strokeOpacity: 0.9,
         strokeWeight: 5,
         map,

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Icon } from '../components/Icon';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
 import { Card, EmptyState, PageHeader } from '../components/ui';
@@ -36,7 +37,7 @@ export function Alerts() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-black text-fg">
-                    {alertTypeIcon(a.type)} {alertTypeLabel(a.type)} — {a.driver.name}
+                    <Icon name={alertTypeIcon(a.type)} inline /> {alertTypeLabel(a.type)} — {a.driver.name}
                     {a.driver.vehicle ? ` • ${a.driver.vehicle.plate}` : ''}
                   </p>
                   {a.note && <p className="mt-1 text-sm text-fg">{a.note}</p>}
@@ -54,11 +55,11 @@ export function Alerts() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${STATUS_COLOR[a.status]}`}>{ALERT_STATUS_LABEL[a.status]}</span>
                   <Link to={`/tracking?driver=${a.driver.id}`} className="rounded-lg border border-border bg-surface2 px-3 py-1.5 text-xs font-bold text-fg">
-                    📍 الخريطة
+                    <Icon name="pin" inline /> الخريطة
                   </Link>
                   {a.driver.phone && (
                     <a href={`tel:${a.driver.phone}`} className="rounded-lg border border-border bg-surface2 px-3 py-1.5 text-xs font-bold text-fg">
-                      📞
+                      <Icon name="phone" />
                     </a>
                   )}
                   {a.status === 'OPEN' && (
@@ -68,7 +69,7 @@ export function Alerts() {
                   )}
                   {a.status !== 'RESOLVED' && (
                     <button onClick={() => void resolve(a.id)} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">
-                      ✓ تم الحل
+                      <Icon name="check" inline /> تم الحل
                     </button>
                   )}
                 </div>

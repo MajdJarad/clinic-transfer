@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { Icon } from '../../components/Icon';
 import { Link } from 'react-router-dom';
 import { useChromeHeight } from '../../lib/chromeExtra';
 import { ageLabel } from '../tracking/freshness';
@@ -57,11 +58,11 @@ export function AlertsBanner() {
             </div>
             <div className="flex shrink-0 flex-wrap items-center gap-2">
               <Link to={`/tracking?driver=${a.driver.id}`} className={ghost} data-testid="alert-locate">
-                📍 على الخريطة
+                <Icon name="pin" inline /> على الخريطة
               </Link>
               {a.driver.phone && (
                 <a href={`tel:${a.driver.phone}`} className={ghost}>
-                  📞 اتصال
+                  <Icon name="phone" inline /> اتصال
                 </a>
               )}
               {open && (
@@ -70,7 +71,7 @@ export function AlertsBanner() {
                 </button>
               )}
               <button onClick={() => void resolve(a.id)} className={`${ghost} font-semibold`} data-testid="alert-resolve">
-                ✓ تم الحل
+                <Icon name="check" inline /> تم الحل
               </button>
             </div>
           </div>

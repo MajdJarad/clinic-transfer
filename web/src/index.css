@@ -19,37 +19,71 @@
  *  - ONE accent (deep teal); red / amber / green only when something needs attention or confirms;
  *  - medium weights only (no heavy bold), generous line height for Arabic.
  */
+/* IDENTITY: "Ink & Brass". Deep ink (graphite with a cold undertone) for structure and primary actions, a quiet
+   brass for highlights, warm paper for surfaces. The only teal on screen is the emblem in the logo. */
 :root {
-  --bg: #f6f7f9;
+  --sidebar-bg: #141a27;
+  --sidebar-fg: #b4bac6;
+  --sidebar-muted: #727a8a;
+  --sidebar-line: rgba(255, 255, 255, 0.08);
+  --sidebar-active: rgba(255, 255, 255, 0.08);
+  --brass: #c9a66b;
+  --bg: #f5f3ee;
   --surface: #ffffff;
-  --surface2: #f8f9fb;
-  --fg: #1d2939;
-  --muted: #667085;
-  --border: #e4e7ec;
-  --accent-soft: #eef7f6;
-  --accent-soft-fg: #0d5f59;
-  --ring: #1d948b;
+  --surface2: #faf8f4;
+  --fg: #1d2330;
+  --muted: #6a6f7a;
+  --border: #e5e0d6;
+  --accent-soft: #edeff4;
+  --accent-soft-fg: #232d44;
+  --ring: #b08d57;
   --logo-word: #2b2b2b;
   --logo-emblem: #01aea8;
-  --shadow: 0 1px 2px 0 rgb(16 24 40 / 0.04);
-  --shadow-pop: 0 8px 24px -6px rgb(16 24 40 / 0.12), 0 2px 6px -2px rgb(16 24 40 / 0.06);
+  --shadow: 0 1px 2px 0 rgb(29 35 48 / 0.05);
+  --shadow-pop: 0 8px 24px -6px rgb(29 35 48 / 0.14), 0 2px 6px -2px rgb(29 35 48 / 0.07);
 }
 
+
 .dark {
-  --bg: #0d1117;
-  --surface: #151b23;
-  --surface2: #1b222c;
-  --fg: #e5e9f0;
-  --muted: #98a2b3;
-  --border: #263040;
-  --accent-soft: rgba(45, 175, 165, 0.14);
-  --accent-soft-fg: #7ad6cd;
-  --ring: #45afa6;
+  /* Dark theme: ink-black surfaces, warm white text, brass as the accent (buttons, links, selections). */
+  --bg: #0e1118;
+  --surface: #151a23;
+  --surface2: #1b212c;
+  --fg: #ece9e2;
+  --muted: #98a0ad;
+  --border: #272e3b;
+  --accent-soft: rgba(201, 166, 107, 0.13);
+  --accent-soft-fg: #dcc79c;
+  --ring: #c9a66b;
+  --sidebar-bg: #0a0e15;
+  --sidebar-line: rgba(255, 255, 255, 0.07);
   --logo-word: #f9f8f2;
   --logo-emblem: #05bab5;
-  --shadow: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-pop: 0 8px 24px -6px rgb(0 0 0 / 0.5), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+  --shadow: 0 1px 2px 0 rgb(0 0 0 / 0.35);
+  --shadow-pop: 0 8px 24px -6px rgb(0 0 0 / 0.55), 0 2px 6px -2px rgb(0 0 0 / 0.45);
+
+  --color-brand-50: #faf5ea;
+  --color-brand-100: #f0e4c9;
+  --color-brand-200: #e2cfa3;
+  --color-brand-300: #d2b878;
+  --color-brand-400: #bf9e5c;
+  --color-brand-500: #a8863f;
+  --color-brand-600: #8b6c2f;
+  --color-brand-700: #725726;
+  --color-brand-800: #5c451f;
+  --color-brand-900: #493619;
+  --color-blue-50: #faf5ea;
+  --color-blue-100: #f0e4c9;
+  --color-blue-200: #e2cfa3;
+  --color-blue-300: #d2b878;
+  --color-blue-400: #bf9e5c;
+  --color-blue-500: #a8863f;
+  --color-blue-600: #8b6c2f;
+  --color-blue-700: #725726;
+  --color-blue-800: #5c451f;
+  --color-blue-900: #493619;
 }
+
 
 @theme inline {
   --font-sans: 'IBM Plex Sans Arabic', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
@@ -64,53 +98,53 @@
 }
 
 @theme {
-  /* Brand: deep teal. The app's "blue-*" classes follow it too, so every screen shares ONE accent. */
-  --color-brand-50: #f0f9f8;
-  --color-brand-100: #d5efec;
-  --color-brand-200: #aadfd9;
-  --color-brand-300: #78c9c1;
-  --color-brand-400: #45afa6;
-  --color-brand-500: #1d948b;
-  --color-brand-600: #0f766e;
-  --color-brand-700: #0d5f59;
-  --color-brand-800: #0e4c48;
-  --color-brand-900: #0f3e3b;
+  /* Primary: deep ink. The app's "blue-*" classes follow it too, so every screen shares ONE accent. */
+  --color-brand-50: #f1f2f6;
+  --color-brand-100: #e1e4ec;
+  --color-brand-200: #c5cad8;
+  --color-brand-300: #98a1b8;
+  --color-brand-400: #667391;
+  --color-brand-500: #3f4d6d;
+  --color-brand-600: #232d44;
+  --color-brand-700: #171f33;
+  --color-brand-800: #111827;
+  --color-brand-900: #0c111c;
 
-  --color-blue-50: #f0f9f8;
-  --color-blue-100: #d5efec;
-  --color-blue-200: #aadfd9;
-  --color-blue-300: #78c9c1;
-  --color-blue-400: #45afa6;
-  --color-blue-500: #1d948b;
-  --color-blue-600: #0f766e;
-  --color-blue-700: #0d5f59;
-  --color-blue-800: #0e4c48;
-  --color-blue-900: #0f3e3b;
-  --color-blue-950: #0a2f2c;
+  --color-blue-50: #f1f2f6;
+  --color-blue-100: #e1e4ec;
+  --color-blue-200: #c5cad8;
+  --color-blue-300: #98a1b8;
+  --color-blue-400: #667391;
+  --color-blue-500: #3f4d6d;
+  --color-blue-600: #232d44;
+  --color-blue-700: #171f33;
+  --color-blue-800: #111827;
+  --color-blue-900: #0c111c;
+  --color-blue-950: #070b13;
 
   /* Cool, slightly desaturated neutrals (replace the blue-tinted slate). */
-  --color-slate-50: #f9fafb;
-  --color-slate-100: #f2f4f7;
-  --color-slate-200: #eaecf0;
-  --color-slate-300: #d0d5dd;
-  --color-slate-400: #98a2b3;
-  --color-slate-500: #667085;
-  --color-slate-600: #475467;
-  --color-slate-700: #344054;
-  --color-slate-800: #1d2939;
-  --color-slate-900: #101828;
-  --color-slate-950: #0c111d;
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f2f4f7;
-  --color-gray-200: #eaecf0;
-  --color-gray-300: #d0d5dd;
-  --color-gray-400: #98a2b3;
-  --color-gray-500: #667085;
-  --color-gray-600: #475467;
-  --color-gray-700: #344054;
-  --color-gray-800: #1d2939;
-  --color-gray-900: #101828;
-  --color-gray-950: #0c111d;
+  --color-slate-50: #faf9f7;
+  --color-slate-100: #f3f1ed;
+  --color-slate-200: #e8e4dc;
+  --color-slate-300: #d4cfc4;
+  --color-slate-400: #a09b91;
+  --color-slate-500: #6d7078;
+  --color-slate-600: #4b4f58;
+  --color-slate-700: #353a44;
+  --color-slate-800: #1f2430;
+  --color-slate-900: #131722;
+  --color-slate-950: #0b0e16;
+  --color-gray-50: #faf9f7;
+  --color-gray-100: #f3f1ed;
+  --color-gray-200: #e8e4dc;
+  --color-gray-300: #d4cfc4;
+  --color-gray-400: #a09b91;
+  --color-gray-500: #6d7078;
+  --color-gray-600: #4b4f58;
+  --color-gray-700: #353a44;
+  --color-gray-800: #1f2430;
+  --color-gray-900: #131722;
+  --color-gray-950: #0b0e16;
 
   /* Status colours: softer than the defaults, still clearly red / amber / green. */
   --color-red-50: #fef3f2;
@@ -232,6 +266,18 @@ table thead th {
 }
 table tbody td {
   padding-block: 0.8rem;
+}
+table th,
+table td {
+  padding-inline: 0.6rem;
+}
+table th:first-child,
+table td:first-child {
+  padding-inline-start: 0;
+}
+table th:last-child,
+table td:last-child {
+  padding-inline-end: 0;
 }
 table tbody tr {
   transition: background-color 0.12s ease;

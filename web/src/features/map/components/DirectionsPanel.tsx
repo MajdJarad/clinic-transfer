@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Icon } from '../../../components/Icon';
 import { ManeuverIcon } from '../ManeuverIcon';
 import { PlaceInput } from '../PlaceInput';
 import { formatDistance, formatDuration, type RouteData } from '../routeNav';
@@ -62,7 +63,7 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
             data-testid="back-to-search"
             className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-border bg-surface2 text-xs text-muted hover:text-fg"
           >
-            ➜
+            <Icon name="arrow" className="h-4 w-4 rtl:-scale-x-100" />
           </button>
           <div className="min-w-0">
             <h2 className="truncate text-xs font-bold text-fg sm:text-sm">الاتجاهات</h2>
@@ -79,7 +80,7 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
                 title={m === 'driving' ? 'سيارة' : 'مشي'}
                 className={`rounded-md p-1 text-xs transition sm:p-1.5 ${p.travelMode === m ? 'bg-blue-600 text-white shadow' : 'text-muted hover:text-fg'}`}
               >
-                {m === 'driving' ? '🚗' : '🚶'}
+                <Icon name={m === 'driving' ? 'car' : 'walk'} className="h-4 w-4" />
               </button>
             ))}
           </div>
@@ -89,7 +90,7 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
             title={minimized ? 'توسيع البطاقة' : 'تصغير لمشاهدة الخريطة بالكامل'}
             className="grid h-7 w-7 place-items-center rounded-lg border border-border bg-surface2 text-xs text-muted transition hover:text-fg"
           >
-            {minimized ? '▼' : '▲'}
+            <Icon name={minimized ? 'down' : 'up'} className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -98,7 +99,7 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
         <div className="flex items-center justify-between gap-2 pt-2 text-xs">
           <div className="flex min-w-0 items-center gap-1 truncate text-[11px] text-muted">
             <span className="truncate font-medium text-fg">{wp.from.label || 'الانطلاق'}</span>
-            <span>➔</span>
+            <Icon name="arrow" className="h-4 w-4 rtl:-scale-x-100" />
             <span className="truncate font-medium text-fg">{wp.to.label || 'الوجهة'}</span>
             {route && <span className="shrink-0 font-mono font-bold text-blue-600">({formatDuration(route.duration)})</span>}
           </div>
@@ -108,7 +109,7 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
             onClick={p.onStart}
             className="flex shrink-0 items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white shadow hover:bg-blue-700 disabled:opacity-50"
           >
-            <span>🧭</span>
+            <Icon name="compass" />
             <span>انطلق</span>
           </button>
         </div>
@@ -136,7 +137,7 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
                 title="تبديل نقطة الانطلاق والوجهة"
                 className="grid h-6 w-6 place-items-center rounded-full border border-border bg-surface text-xs text-muted shadow-sm transition hover:border-blue-500 hover:text-fg active:scale-95"
               >
-                ⇅
+                <Icon name="swap" className="h-4 w-4" />
               </button>
             </div>
             <PlaceInput
@@ -212,7 +213,7 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
                         </div>
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1">
-                        {i === fastest && <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600">الأسرع ✓</span>}
+                        {i === fastest && <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600">الأسرع</span>}
                         {jam && <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-600">ازدحام</span>}
                       </div>
                     </button>
@@ -221,7 +222,7 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
               </div>
             )}
             {p.depart.mode === 'later' && p.routes.length > 0 && !p.calculating && !p.departPast && (
-              <p className="text-[10px] text-muted">⏱️ الأوقات مقدّرة حسب الازدحام المتوقع وقت المغادرة المحدد.</p>
+              <p className="text-[10px] text-muted"><Icon name="clock" inline /> الأوقات مقدّرة حسب الازدحام المتوقع وقت المغادرة المحدد.</p>
             )}
             {p.departPast && <p className="text-[10px] text-amber-600">وقت المغادرة مضى، لذلك حُسب المسار للمغادرة الآن.</p>}
 
@@ -235,11 +236,11 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
               <div className="ms-auto flex items-center gap-3">
                 {route && (
                   <button type="button" onClick={p.onShare} className="text-[11px] font-semibold text-muted hover:text-fg" data-testid="share-route">
-                    🔗 مشاركة
+                    <Icon name="link" inline /> مشاركة
                   </button>
                 )}
                 <button type="button" onClick={() => setShowOptions((v) => !v)} className="text-[11px] font-semibold text-muted hover:text-fg" data-testid="options-toggle">
-                  ⚙️ الخيارات {optionsActive ? '(مفعّلة)' : ''} {showOptions ? '▲' : '▼'}
+                  <Icon name="sliders" inline /> الخيارات {optionsActive ? '(مفعّلة)' : ''} <Icon name={showOptions ? 'up' : 'down'} inline className="h-3.5 w-3.5" />
                 </button>
               </div>
 
@@ -315,7 +316,7 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
               data-testid="start-nav"
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition hover:bg-blue-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none sm:py-3 sm:text-sm"
             >
-              <span className="text-sm">🧭</span>
+              <Icon name="compass" />
               <span>{p.canStart ? `ابدأ الملاحة${summary ? ` • ${summary}` : ''}` : p.startHint || 'ابدأ الملاحة'}</span>
             </button>
             {p.canStart && !wp.fromIsGps && (

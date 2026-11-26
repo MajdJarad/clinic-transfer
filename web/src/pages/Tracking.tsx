@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Icon } from '../components/Icon';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api';
 import { useI18n } from '../i18n';
@@ -130,14 +131,14 @@ export function Tracking() {
           </span>
         ))}
         <span className={`rounded-full bg-surface/95 px-2.5 py-1 text-[11px] font-semibold shadow backdrop-blur-md ${offline ? 'text-red-600' : 'text-muted'}`} data-testid="tracking-status">
-          {offline ? '⚠️ انقطع الاتصال… نحاول مجدداً' : loaded ? `آخر تحديث ${new Date(fetchedAt).toLocaleTimeString('en-GB')}` : 'جارٍ التحميل…'}
+          {offline ? 'انقطع الاتصال… نحاول مجدداً' : loaded ? `آخر تحديث ${new Date(fetchedAt).toLocaleTimeString('en-GB')}` : 'جارٍ التحميل…'}
         </span>
       </div>
 
       {/* Map buttons */}
       <div className="absolute end-3 top-3 z-20 flex flex-col items-end gap-2 max-sm:top-24">
         <button type="button" onClick={() => setPanelOpen((v) => !v)} className={btn} data-testid="toggle-panel">
-          🚗 السائقون ({view.length})
+          <Icon name="car" inline /> السائقون ({view.length})
         </button>
         <button
           type="button"
@@ -149,18 +150,18 @@ export function Tracking() {
           className={btn}
           data-testid="fit-all"
         >
-          🎯 عرض الكل
+          <Icon name="target" inline /> عرض الكل
         </button>
         <button type="button" onClick={() => setTraffic((v) => !v)} className={`${btn} ${traffic ? '!bg-amber-600 !text-white' : ''}`}>
-          🚦 المرور
+          <Icon name="traffic" inline /> المرور
         </button>
         {staleCount > 0 && (
           <button type="button" onClick={() => setHideQuiet((v) => !v)} className={`${btn} ${hideQuiet ? '!bg-slate-600 !text-white' : ''}`} data-testid="toggle-stale">
-            {hideQuiet ? `🕘 إظهار المتوقفين (${staleCount})` : `🕘 إخفاء المتوقفين (${staleCount})`}
+            <Icon name="clock" inline />{hideQuiet ? `إظهار المتوقفين (${staleCount})` : `إخفاء المتوقفين (${staleCount})`}
           </button>
         )}
         <button type="button" onClick={() => setIsFullscreen((v) => !v)} className={btn} data-testid="tracking-fullscreen">
-          {isFullscreen ? '🗗 تصغير' : '⛶ ملء الشاشة'}
+          <Icon name={isFullscreen ? 'shrink' : 'expand'} inline />{isFullscreen ? 'تصغير' : 'ملء الشاشة'}
         </button>
         <div className="flex overflow-hidden rounded-lg border border-border bg-surface/95 shadow-lg backdrop-blur-md">
           <button type="button" onClick={() => mapApi.current?.zoomBy(1)} className="h-9 w-9 text-base font-bold text-fg" aria-label="تكبير">
@@ -210,12 +211,12 @@ export function Tracking() {
                   </p>
                   {located && isCurrent(d) && (
                     <p className="mt-0.5 text-[10px] font-semibold text-muted" data-testid={`driver-source-${d.id}`}>
-                      {d.source === 'traccar' ? '📡 من جهاز التتبع' : '📱 من هاتف السائق (GPS)'}
+                      <Icon name={d.source === 'traccar' ? 'signal' : 'mobile'} inline className="h-3.5 w-3.5" />{d.source === 'traccar' ? 'من جهاز التتبع' : 'من هاتف السائق (GPS)'}
                     </p>
                   )}
                   {located && !isCurrent(d) && (
                     <p className="mt-0.5 text-[11px] font-semibold text-muted" data-testid={`driver-stale-${d.id}`}>
-                      {hideQuiet ? '🕘 توقف عن الإرسال — مخفي من الخريطة' : '🕘 توقف عن الإرسال — آخر موقع معروف (رمادي على الخريطة)'}
+                      {hideQuiet ? 'توقف عن الإرسال — مخفي من الخريطة' : 'توقف عن الإرسال — آخر موقع معروف (رمادي على الخريطة)'}
                     </p>
                   )}
                   {located && (
@@ -226,7 +227,7 @@ export function Tracking() {
                   )}
                   {onTrip && (
                     <p className="mt-1 truncate rounded-lg bg-surface2 px-2 py-1 text-[11px] font-semibold text-fg" data-testid={`driver-trip-${d.id}`}>
-                      {onTrip.status === 'PICKED_UP' ? '🏥 إلى الوجهة' : '🧑‍⚕️ إلى المريض'} • {onTrip.patientName}
+                      <Icon name={onTrip.status === 'PICKED_UP' ? 'clinic' : 'heart'} inline className="h-3.5 w-3.5" />{onTrip.status === 'PICKED_UP' ? 'إلى الوجهة' : 'إلى المريض'} • {onTrip.patientName}
                     </p>
                   )}
                   <div className="mt-2 flex gap-2">
@@ -243,7 +244,7 @@ export function Tracking() {
                       }`}
                       data-testid={`follow-${d.id}`}
                     >
-                      {followId === d.id ? '👁️ يتم التتبع' : '👁️ تتبّع'}
+                      <Icon name="eye" inline className="h-3.5 w-3.5" />{followId === d.id ? 'يتم التتبع' : 'تتبّع'}
                     </button>
                     {located && !isCurrent(d) && (
                       <button
@@ -256,12 +257,12 @@ export function Tracking() {
                         title="مسح آخر موقع معروف"
                         data-testid={`clear-${d.id}`}
                       >
-                        🗑️ مسح
+                        <Icon name="trash" inline className="h-3.5 w-3.5" /> مسح
                       </button>
                     )}
                     {d.phone && (
                       <a href={`tel:${d.phone}`} onClick={(e) => e.stopPropagation()} className="rounded-lg border border-border bg-surface2 px-3 py-1 text-[11px] font-bold text-fg">
-                        📞
+                        <Icon name="phone" />
                       </a>
                     )}
                   </div>

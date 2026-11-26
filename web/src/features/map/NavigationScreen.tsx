@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Icon } from '../../components/Icon';
 import { api } from '../../api';
 import { useMapConfig } from '../../config';
 import { useTheme } from '../../theme';
@@ -556,7 +557,7 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
     setSecondaryBusy(true);
     try {
       const msg = await secondaryAction.run();
-      setSecondaryNote(typeof msg === 'string' ? msg : '✓ تم');
+      setSecondaryNote(typeof msg === 'string' ? msg : 'تم');
     } catch (e) {
       setSecondaryNote(e instanceof Error ? e.message : 'تعذّر التنفيذ');
     } finally {
@@ -590,7 +591,7 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
         <div className="absolute inset-x-0 top-1/3 z-20 mx-auto w-[min(92%,24rem)] rounded-3xl bg-white p-5 text-center text-slate-900 shadow-2xl" data-testid="nav-locating">
           {gpsError ? (
             <>
-              <div className="text-4xl">📍</div>
+              <div className="text-white/90"><Icon name="pin" className="h-10 w-10" /></div>
               <p className="mt-2 text-sm font-semibold leading-relaxed">{gpsError}</p>
               <div className="mt-4 flex gap-2">
                 <button onClick={() => setGpsTry((n) => n + 1)} className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-bold text-white" data-testid="nav-gps-retry">
@@ -652,15 +653,15 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
           >
             {ta
               ? ta.inside
-                ? `🚦 أنت داخل ازدحام ${ta.speed === 'TRAFFIC_JAM' ? 'شديد' : 'متوسط'} — يمتد ${formatDistance(ta.length)} أمامك`
-                : `🚦 ازدحام ${ta.speed === 'TRAFFIC_JAM' ? 'شديد' : 'متوسط'} بعد ${formatDistance(ta.startsIn)} — يمتد ${formatDistance(ta.length)}`
-              : '✅ لا ازدحام على المسار القريب'}
+                ? `أنت داخل ازدحام ${ta.speed === 'TRAFFIC_JAM' ? 'شديد' : 'متوسط'} — يمتد ${formatDistance(ta.length)} أمامك`
+                : `ازدحام ${ta.speed === 'TRAFFIC_JAM' ? 'شديد' : 'متوسط'} بعد ${formatDistance(ta.startsIn)} — يمتد ${formatDistance(ta.length)}`
+              : 'لا ازدحام على المسار القريب'}
           </div>
         )}
 
         {suggest && (
           <div className="rounded-xl bg-white p-3 text-slate-900 shadow-2xl" data-testid="nav-suggest">
-            <p className="text-sm font-black">⚡ مسار أسرع متاح</p>
+            <p className="text-sm font-black"><Icon name="bolt" inline /> مسار أسرع متاح</p>
             <p className="mt-0.5 text-xs text-slate-600">يوفّر نحو {formatDuration(suggest.savedSec)} حسب حركة المرور الآن.</p>
             <div className="mt-2 flex gap-2">
               <button onClick={acceptSuggestion} className="flex-1 rounded-lg bg-blue-600 py-2 text-xs font-bold text-white" data-testid="nav-suggest-accept">
@@ -698,11 +699,11 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
       {status !== 'arrived' && (
         <div className="absolute bottom-28 end-3 z-10 flex flex-col items-end gap-2">
           <button onClick={overview} className="rounded-full bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-2xl active:scale-95" data-testid="nav-overview">
-            🗺️ نظرة عامة
+            <Icon name="layers" inline /> نظرة عامة
           </button>
           {!follow && (
             <button onClick={recenter} className="flex items-center gap-1.5 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-blue-600 shadow-2xl active:scale-95" data-testid="nav-recenter">
-              🎯 إعادة التركيز
+              <Icon name="target" inline /> إعادة التركيز
             </button>
           )}
         </div>
@@ -723,7 +724,7 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
             </div>
           </div>
           <button onClick={toggleMute} title={muted ? 'تشغيل الصوت' : 'كتم الصوت'} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-slate-100 text-lg active:scale-95">
-            {muted ? '🔇' : '🔊'}
+            <Icon name={muted ? 'volume-off' : 'volume'} className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -732,7 +733,7 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
       {status === 'arrived' && (
         <div className="absolute inset-0 z-30 grid place-items-center bg-black/50 p-6">
           <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center text-slate-900 shadow-2xl" data-testid="nav-arrived">
-            <div className="text-5xl">🏁</div>
+            <div className="text-slate-700"><Icon name="flag" className="mx-auto h-12 w-12" /></div>
             <h2 className="mt-2 text-xl font-black">وصلت إلى وجهتك</h2>
             <p className="mt-1 text-sm text-slate-600">{destination.label}</p>
             {arrivalAction && actionState !== 'done' && (
@@ -758,7 +759,7 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
                 {secondaryNote && <p className="mt-2 text-xs font-semibold text-slate-600" data-testid="nav-secondary-note">{secondaryNote}</p>}
               </>
             )}
-            {actionState === 'done' && <p className="mt-4 text-sm font-bold text-emerald-700" data-testid="nav-action-done">✓ تم تحديث حالة الرحلة</p>}
+            {actionState === 'done' && <p className="mt-4 text-sm font-bold text-emerald-700" data-testid="nav-action-done"><Icon name="check" inline /> تم تحديث حالة الرحلة</p>}
             {actionState === 'error' && <p className="mt-3 text-xs font-bold text-red-600">تعذّر تحديث الحالة، حاول مرة أخرى.</p>}
             <button onClick={onExit} className="mt-3 w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white" data-testid="nav-arrived-close">
               {actionState === 'done' || !arrivalAction ? 'تم' : 'إغلاق'}

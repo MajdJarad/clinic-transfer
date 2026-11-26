@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Icon } from '../../components/Icon';
 import { api } from '../../api';
 import { newSessionToken as newSession } from './resolveAddress';
 
@@ -21,7 +22,7 @@ interface PlaceInputProps {
   onClear: () => void;
   onUseCurrentLocation?: () => void; // shows a "my location" row at the top
   placeholder: string;
-  badge?: string;
+  badge?: ReactNode;
   badgeClass?: string;
   /** Set when the text was edited but no suggestion has been chosen yet. */
   unresolved?: boolean;
@@ -159,7 +160,7 @@ export function PlaceInput({
             }}
             className="p-0.5 text-xs text-muted hover:text-fg"
           >
-            ✕
+            <Icon name="x" className="h-4 w-4" />
           </button>
         )}
       </div>
@@ -183,7 +184,7 @@ export function PlaceInput({
               }}
               className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-start text-blue-600 transition hover:bg-surface2"
             >
-              <span className="shrink-0">🎯</span>
+              <Icon name="target" />
               <span className="font-semibold">موقعي الحالي</span>
             </button>
           )}
@@ -200,7 +201,7 @@ export function PlaceInput({
                 i === active ? 'bg-surface2' : 'hover:bg-surface2'
               }`}
             >
-              <span className="mt-0.5 shrink-0">📍</span>
+              <Icon name="pin" className="mt-0.5" />
               <span className="min-w-0">
                 <span className="block truncate font-medium text-fg">{s.main}</span>
                 {s.secondary && <span className="block truncate text-[11px] text-muted">{s.secondary}</span>}
