@@ -29,7 +29,7 @@ export function Tracking() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [followId, setFollowId] = useState<string | null>(null);
   const [fitSignal, setFitSignal] = useState(0);
-  const [traffic, setTraffic] = useState(false);
+  const [traffic, setTraffic] = useState(true);
   const [hideQuiet, setHideQuiet] = useState(false); // drivers who stopped reporting stay on the map, grey, with their age
   const [panelOpen, setPanelOpen] = useState(() => window.innerWidth >= 768);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -159,7 +159,7 @@ export function Tracking() {
             data-testid="driver-list"
           >
             <div className="shrink-0 p-3 pb-2">
-              <div className="flex h-11 items-center gap-2.5 rounded-full bg-surface2 px-4">
+              <div className="flex h-11 items-center gap-2.5 rounded-full bg-surface2 px-4 transition focus-within:bg-surface focus-within:ring-4 focus-within:ring-[color-mix(in_srgb,var(--ring)_16%,transparent)]">
                 <Icon name="search" className="h-[18px] w-[18px] shrink-0 text-muted" />
                 <input
                   value={q}

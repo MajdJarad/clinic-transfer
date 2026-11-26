@@ -38,7 +38,7 @@ export function loadGoogleMaps(key: string): Promise<any> {
     const script = document.createElement('script');
     script.src =
       `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}` +
-      `&callback=__gmapReady&language=ar&region=TR&loading=async`;
+      `&callback=__gmapReady&language=tr&region=TR&loading=async`;
     script.async = true;
     script.onerror = () => {
       scriptPromise = null;

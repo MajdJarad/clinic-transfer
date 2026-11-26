@@ -254,6 +254,12 @@ body {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
+/* Text fields draw their own focus ring (on the field or on the pill around it). */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
 
 button {
   font-family: inherit;

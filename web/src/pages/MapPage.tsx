@@ -103,7 +103,7 @@ export function MapScreen({ className, trip: driverTrip, onStartTrip }: MapScree
 
   // ── Map UI state
   const [mapType, setMapType] = useState<MapTypeKey>('roadmap');
-  const [layers, setLayers] = useState<Record<LayerKey, boolean>>({ traffic: false, transit: false, bicycling: false });
+  const [layers, setLayers] = useState<Record<LayerKey, boolean>>({ traffic: true, transit: false, bicycling: false });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [picked, setPicked] = useState<MapPick | null>(null); // a tapped point / chosen search result
   const [myPos, setMyPos] = useState<{ coord: LatLng; accuracy: number } | null>(null);
@@ -400,7 +400,7 @@ export function MapScreen({ className, trip: driverTrip, onStartTrip }: MapScree
       )}
 
       {/* Search (explore) or directions */}
-      <div className="absolute inset-x-3 top-3 z-30 flex max-w-full flex-col gap-3 sm:inset-x-auto sm:start-4 sm:top-4 sm:w-96">
+      <div className="absolute inset-x-3 top-3 z-40 flex max-w-full flex-col gap-3 sm:inset-x-auto sm:start-4 sm:top-4 sm:w-96">
         {view === 'explore' ? (
           <ExploreBar
             value={searchText}

@@ -123,7 +123,7 @@ export function PlaceInput({
   const showList = open && (items.length > 0 || loading || !!error || !!onUseCurrentLocation);
 
   return (
-    <div className="relative">
+    <div className={variant === 'bare' ? 'min-w-0' : 'relative'}>
       <div
         className={
           variant === 'bare'
@@ -208,10 +208,10 @@ export function PlaceInput({
                 i === active ? 'bg-surface2' : 'hover:bg-surface2'
               }`}
             >
-              <Icon name="pin" className="mt-0.5" />
-              <span className="min-w-0">
-                <span className="block truncate font-medium text-fg">{s.main}</span>
-                {s.secondary && <span className="block truncate text-xs text-muted">{s.secondary}</span>}
+              <Icon name="pin" className="mt-0.5 h-4 w-4" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium text-fg" dir="auto">{s.main}</span>
+                {s.secondary && <span className="block truncate text-xs text-muted" dir="auto">{s.secondary}</span>}
               </span>
             </button>
           ))}

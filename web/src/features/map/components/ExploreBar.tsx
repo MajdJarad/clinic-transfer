@@ -13,7 +13,7 @@ interface ExploreBarProps {
 /** The map's home state, like Google Maps: one search box and a button that opens directions. */
 export function ExploreBar({ value, onChange, onPick, onClear, onDirections }: ExploreBarProps) {
   return (
-    <div className={`flex h-12 items-center gap-2 rounded-full ps-4 pe-1 sm:h-14 ${MAP_PANEL}`} data-testid="explore-bar">
+    <div className={`relative flex h-12 items-center gap-2 rounded-full ps-4 pe-1 transition focus-within:ring-4 focus-within:ring-[color-mix(in_srgb,var(--ring)_22%,transparent)] sm:h-14 ${MAP_PANEL}`} data-testid="explore-bar">
       <div className="min-w-0 flex-1">
         <PlaceInput
           value={value}

@@ -75,6 +75,9 @@ export function Icon({
 }) {
   const body = PATHS[name];
   if (!body) return null;
+  // A className that sets no size (e.g. just a margin) would leave the svg unsized, and it then fills its
+  // container: always keep a size.
+  const sized = /(^|\s)(?:[a-z-]+:)*(?:h|w|size)-/.test(className) ? className : `${className} h-4 w-4`;
   return (
     <svg
       viewBox="0 0 24 24"
@@ -83,7 +86,7 @@ export function Icon({
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={`${inline ? 'me-1.5 inline-block align-[-0.2em]' : 'shrink-0'} ${className}`}
+      className={`${inline ? 'me-1.5 inline-block align-[-0.2em]' : 'shrink-0'} ${sized}`}
       aria-hidden
     >
       {body}

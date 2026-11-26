@@ -189,6 +189,9 @@ const addressCache = new TtlCache<string | null>(24 * 3600_000, 1000);
 
 const r5 = (n: number) => n.toFixed(5);
 
+/** Place names, street names and addresses are shown as they are written on the street (Turkish), not translated. */
+const PLACE_LANGUAGE = 'tr';
+
 export async function computeRoutes(from: LatLng, to: LatLng, opts: RouteOptions): Promise<RouteResult[]> {
   assertGoogleConfigured();
   const departure = opts.departureTime && opts.departureTime.getTime() > Date.now() + 30_000 ? opts.departureTime : undefined;
@@ -254,7 +257,8 @@ export async function autocompletePlaces(input: string, session: string | undefi
       headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': env.googleMapsApiKey },
       body: JSON.stringify({
         input,
-        languageCode: 'ar',
+        languageCode: PLACE_LANGUAGE,
+        regionCode: 'TR',
         locationBias: {
           circle: { center: { latitude: bias.lat, longitude: bias.lng }, radius: 50000 },
         },
@@ -290,7 +294,7 @@ export async function getPlace(placeId: string, session?: string): Promise<Place
   assertGoogleConfigured();
   const cachedPlace = placeCache.get(placeId);
   if (cachedPlace) return cachedPlace;
-  const qs = new URLSearchParams({ languageCode: 'ar' });
+  const qs = new URLSearchParams({ languageCode: PLACE_LANGUAGE });
   if (session) qs.set('sessionToken', session);
   const r = await gfetch(
     `https://places.googleapis.com/v1/places/${placeId}?${qs}`,
@@ -314,7 +318,7 @@ export async function getPlace(placeId: string, session?: string): Promise<Place
   const name = p.displayName?.text ?? '';
   const addr = p.formattedAddress ?? '';
   const place: PlaceDetails = {
-    label: name && addr && !addr.startsWith(name) ? `${name}، ${addr}` : addr || name,
+    label: name && addr && !addr.startsWith(name) ? `${name}, ${addr}` : addr || name,
     name,
     lat: p.location.latitude,
     lng: p.location.longitude,
@@ -331,7 +335,7 @@ export async function reverseGeocode(p: LatLng): Promise<string | null> {
   const key = `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`; // ~11 m
   const hit = addressCache.get(key);
   if (hit !== undefined) return hit;
-  const qs = new URLSearchParams({ latlng: `${p.lat},${p.lng}`, language: 'ar', key: env.googleMapsApiKey });
+  const qs = new URLSearchParams({ latlng: `${p.lat},${p.lng}`, language: PLACE_LANGUAGE, key: env.googleMapsApiKey });
   const r = await gfetch(`https://maps.googleapis.com/maps/api/geocode/json?${qs}`, {}, 6000, 'Google Geocoding');
   if (!r.ok) throw new HttpError(502, `Google Geocoding error (${r.status})`);
   const data = (await r.json()) as { status: string; results?: { formatted_address: string; types: string[] }[] };

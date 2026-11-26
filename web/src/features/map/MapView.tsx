@@ -37,7 +37,7 @@ export function MapView({
   const { mapRef, gRef, ready } = gm;
   const markersRef = useRef<HtmlMarker[]>([]);
   const routeRef = useRef<any>(null);
-  const [showTraffic, setShowTraffic] = useState(false);
+  const [showTraffic, setShowTraffic] = useState(true);
   useMapLayers(gm, { traffic: showTraffic });
 
   // Markers.
