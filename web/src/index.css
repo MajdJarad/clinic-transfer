@@ -30,8 +30,7 @@
   --accent-soft-fg: #0d5f59;
   --ring: #1d948b;
   --logo-word: #2b2b2b;
-  --logo-emblem: #12ada3;
-  --logo-tag: #0f766e;
+  --logo-emblem: #01aea8;
   --shadow: 0 1px 2px 0 rgb(16 24 40 / 0.04);
   --shadow-pop: 0 8px 24px -6px rgb(16 24 40 / 0.12), 0 2px 6px -2px rgb(16 24 40 / 0.06);
 }
@@ -48,7 +47,6 @@
   --ring: #45afa6;
   --logo-word: #f9f8f2;
   --logo-emblem: #05bab5;
-  --logo-tag: #05bab5;
   --shadow: 0 1px 2px 0 rgb(0 0 0 / 0.3);
   --shadow-pop: 0 8px 24px -6px rgb(0 0 0 / 0.5), 0 2px 6px -2px rgb(0 0 0 / 0.4);
 }
