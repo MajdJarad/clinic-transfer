@@ -53,18 +53,25 @@ export async function setTripStatus(trip: { id: string; driverId: string | null 
   return updated;
 }
 
-/** Called with every position a driver reports. Returns the new status if the trip moved on. */
+/**
+ * Called with every position a driver reports. Returns the new status of the first trip that moved on, or null.
+ * Every active trip of the driver is looked at, not just the oldest: a trip that was started and never finished
+ * (a forgotten "on the way") must not swallow the position updates of the trip the driver is really on.
+ */
 export async function progressTripFromPosition(
   driverId: string,
   pos: { lat: number; lng: number; accuracy?: number | null },
 ): Promise<{ tripId: string; status: string } | null> {
-  const trip = await prisma.trip.findFirst({
+  const trips = await prisma.trip.findMany({
     where: { driverId, status: { in: ACTIVE_STATUSES } },
     orderBy: { scheduledAt: 'asc' },
   });
-  if (!trip) return null;
-  const next = nextAutoStatus(trip, pos);
-  if (!next) return null;
-  await setTripStatus(trip, next);
-  return { tripId: trip.id, status: next };
+  let first: { tripId: string; status: string } | null = null;
+  for (const trip of trips) {
+    const next = nextAutoStatus(trip, pos);
+    if (!next) continue;
+    await setTripStatus(trip, next);
+    first ??= { tripId: trip.id, status: next };
+  }
+  return first;
 }
