@@ -400,7 +400,7 @@ export function MapScreen({ className, trip: driverTrip, onStartTrip }: MapScree
       )}
 
       {/* Search (explore) or directions */}
-      <div className="absolute inset-x-2 top-2.5 z-30 flex max-w-full flex-col gap-2 sm:inset-x-auto sm:start-4 sm:top-4 sm:w-80 md:w-96">
+      <div className="absolute inset-x-3 top-3 z-30 flex max-w-full flex-col gap-3 sm:inset-x-auto sm:start-4 sm:top-4 sm:w-96">
         {view === 'explore' ? (
           <ExploreBar
             value={searchText}
@@ -450,7 +450,7 @@ export function MapScreen({ className, trip: driverTrip, onStartTrip }: MapScree
       </div>
 
       {notice && (
-        <div className="absolute inset-x-0 top-20 z-40 mx-auto w-fit max-w-[90%] rounded-full bg-slate-900/90 px-4 py-2 text-xs font-semibold text-white shadow-2xl sm:top-4" role="status" data-testid="notice">
+        <div className="absolute inset-x-0 top-20 z-40 mx-auto w-fit max-w-[90%] rounded-full bg-slate-900/90 px-5 py-2.5 text-sm font-medium text-white shadow-float backdrop-blur-xl sm:top-4" role="status" data-testid="notice">
           {notice}
         </div>
       )}

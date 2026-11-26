@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Icon } from '../../../components/Icon';
+import { MAP_BTN, MAP_PANEL } from '../mapUi';
 
 export const MAP_TYPES = {
   roadmap: 'خريطة شوارع',
@@ -31,9 +32,7 @@ interface MapControlsProps {
   onZoom: (delta: number) => void;
 }
 
-/** One round, floating button: white, large soft shadow, no outline. */
-const round =
-  'grid h-10 w-10 place-items-center rounded-full bg-surface text-fg shadow-float sm:h-11 sm:w-11 transition hover:bg-surface2 active:scale-95';
+const round = MAP_BTN;
 
 /** Layers menu and the round buttons at the map's corner. */
 export function MapControls(p: MapControlsProps) {
@@ -47,7 +46,7 @@ export function MapControls(p: MapControlsProps) {
           onClick={() => setOpen(!open)}
           title="طبقات الخريطة"
           data-testid="layers-button"
-          className="flex h-11 w-11 items-center justify-center gap-2 rounded-full bg-surface text-sm font-medium text-fg shadow-float transition hover:bg-surface2 active:scale-95 sm:w-auto sm:px-4"
+          className="flex h-10 w-10 shrink-0 items-center justify-center gap-2 rounded-full bg-surface text-sm font-medium text-fg shadow-float transition hover:bg-surface2 active:scale-95 sm:h-11 sm:w-auto sm:px-4"
         >
           <Icon name="layers" className="h-5 w-5" />
           <span className="hidden sm:inline">
@@ -56,7 +55,7 @@ export function MapControls(p: MapControlsProps) {
           </span>
         </button>
         {open && (
-          <div className="absolute bottom-full end-0 z-40 mb-3 flex w-60 flex-col gap-1 rounded-3xl bg-surface p-2 text-xs shadow-2xl sm:bottom-auto sm:top-full sm:mb-0 sm:mt-3">
+          <div className={`absolute bottom-full end-0 z-40 mb-3 flex w-60 flex-col gap-1 ${MAP_PANEL} p-2 text-xs sm:bottom-auto sm:top-full sm:mb-0 sm:mt-3`}>
             {(Object.keys(MAP_TYPES) as MapTypeKey[]).map((k) => (
               <button
                 key={k}
@@ -100,10 +99,10 @@ export function MapControls(p: MapControlsProps) {
       </button>
 
       <div className="hidden flex-col overflow-hidden rounded-full bg-surface shadow-float sm:flex">
-        <button type="button" onClick={() => p.onZoom(1)} className="grid h-11 w-11 place-items-center text-fg transition hover:bg-surface2" title="تكبير">
+        <button type="button" onClick={() => p.onZoom(1)} className="grid h-11 w-11 place-items-center text-fg transition hover:bg-surface2" title="تكبير" aria-label="تكبير">
           <Icon name="plus" className="h-5 w-5" />
         </button>
-        <button type="button" onClick={() => p.onZoom(-1)} className="grid h-11 w-11 place-items-center text-fg transition hover:bg-surface2" title="تصغير">
+        <button type="button" onClick={() => p.onZoom(-1)} className="grid h-11 w-11 place-items-center text-fg transition hover:bg-surface2" title="تصغير" aria-label="تصغير">
           <span className="block h-[1.7px] w-[14px] rounded bg-current" />
         </button>
       </div>

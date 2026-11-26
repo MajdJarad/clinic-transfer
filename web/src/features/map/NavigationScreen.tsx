@@ -26,6 +26,7 @@ import {
   type RouteModel,
 } from './routeNav';
 import { ManeuverIcon } from './ManeuverIcon';
+import { MAP_BTN, MAP_PANEL } from './mapUi';
 
 export interface NavTarget {
   label: string;
@@ -582,55 +583,55 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
       {mapError && (
         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-slate-900 p-6 text-center">
           <p className="font-semibold">تعذّر تحميل الخريطة: {mapError}</p>
-          <button onClick={onExit} className="rounded-xl bg-white/10 px-4 py-2 text-sm font-bold">رجوع</button>
+          <button onClick={onExit} className="h-11 rounded-full bg-white/10 px-6 text-sm font-medium">رجوع</button>
         </div>
       )}
 
       {/* ───── Waiting for the real position ───── */}
       {locating && !mapError && (
-        <div className="absolute inset-x-0 top-1/3 z-20 mx-auto w-[min(92%,24rem)] rounded-3xl bg-white p-5 text-center text-slate-900 shadow-2xl" data-testid="nav-locating">
+        <div className="absolute inset-x-0 top-1/3 z-20 mx-auto w-[min(92%,24rem)] rounded-[32px] bg-surface p-6 text-center text-fg shadow-float" data-testid="nav-locating">
           {gpsError ? (
             <>
-              <div className="text-white/90"><Icon name="pin" className="h-10 w-10" /></div>
+              <div className="text-muted"><Icon name="pin" className="mx-auto h-10 w-10" /></div>
               <p className="mt-2 text-sm font-semibold leading-relaxed">{gpsError}</p>
               <div className="mt-4 flex gap-2">
-                <button onClick={() => setGpsTry((n) => n + 1)} className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-bold text-white" data-testid="nav-gps-retry">
+                <button onClick={() => setGpsTry((n) => n + 1)} className="h-12 flex-1 rounded-full bg-brand-600 text-sm font-medium text-white shadow-md" data-testid="nav-gps-retry">
                   إعادة المحاولة
                 </button>
-                <button onClick={onExit} className="flex-1 rounded-xl bg-slate-100 py-2.5 text-sm font-bold">
+                <button onClick={onExit} className="h-12 flex-1 rounded-full bg-surface2 text-sm font-medium text-fg">
                   رجوع
                 </button>
               </div>
             </>
           ) : (
             <>
-              <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+              <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
               <p className="mt-3 text-sm font-bold">جارٍ تحديد موقعك…</p>
-              <p className="mt-1 text-xs text-slate-500">{gpsNote || 'ستبدأ الملاحة من موقعك الفعلي عند التقاط الإشارة.'}</p>
+              <p className="mt-1 text-xs text-muted">{gpsNote || 'ستبدأ الملاحة من موقعك الفعلي عند التقاط الإشارة.'}</p>
             </>
           )}
         </div>
       )}
 
       {/* ───── Turn banner ───── */}
-      <div className="absolute inset-x-2 top-2 z-10 space-y-2 sm:inset-x-auto sm:start-4 sm:top-4 sm:w-[26rem]" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
-        <div className="overflow-hidden rounded-2xl bg-[#0b6b3a] shadow-2xl">
-          <div className="flex items-center gap-3 p-3">
-            <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-white/15">
-              <ManeuverIcon maneuver={bannerManeuver} size={40} />
+      <div className="absolute inset-x-3 top-3 z-10 space-y-2.5 sm:inset-x-auto sm:start-4 sm:top-4 sm:w-96" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
+        <div className={`overflow-hidden ${MAP_PANEL}`}>
+          <div className="flex items-center gap-3.5 p-3.5">
+            <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-brand-600 text-white shadow-md">
+              <ManeuverIcon maneuver={bannerManeuver} size={38} />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-2xl font-black leading-tight" dir="rtl" data-testid="nav-distance">
+              <div className="text-[28px] font-semibold leading-tight tracking-tight text-fg" dir="rtl" data-testid="nav-distance">
                 {atStart ? 'انطلق' : formatDistance(progress.distToManeuver)}
               </div>
-              <div className="line-clamp-2 text-sm font-semibold leading-snug text-white/95" data-testid="nav-instruction">
+              <div className="line-clamp-2 text-sm font-medium leading-snug text-muted" data-testid="nav-instruction">
                 {bannerText}
               </div>
             </div>
           </div>
           {afterNext && !up.isArrival && (
-            <div className="flex items-center gap-2 border-t border-white/15 bg-black/15 px-3 py-1.5 text-xs">
-              <span className="text-white/70">ثم</span>
+            <div className="flex items-center gap-2 bg-surface2 px-4 py-2.5 text-xs text-fg">
+              <span className="text-muted">ثم</span>
               <ManeuverIcon maneuver={afterNext.maneuver} size={18} />
               <span className="truncate">{afterNext.instruction}</span>
             </div>
@@ -639,15 +640,19 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
 
         {/* Where I am and what is ahead */}
         {currentRoad && (
-          <div className="truncate rounded-xl bg-slate-800/90 px-3 py-1.5 text-xs shadow-lg" data-testid="nav-road">
-            <span className="text-white/60">الآن: </span>
+          <div className="truncate rounded-full bg-surface/95 px-4 py-2 text-xs font-medium text-fg shadow-float backdrop-blur-xl" data-testid="nav-road">
+            <span className="text-muted">الآن: </span>
             {currentRoad}
           </div>
         )}
         {mode === 'driving' && status === 'navigating' && (
           <div
-            className={`rounded-xl px-3 py-2 text-xs font-bold shadow-lg ${
-              ta ? (ta.speed === 'TRAFFIC_JAM' ? 'bg-red-600' : 'bg-amber-500') : 'bg-emerald-700/95'
+            className={`rounded-full px-4 py-2 text-xs font-medium shadow-float backdrop-blur-xl ${
+              ta
+                ? ta.speed === 'TRAFFIC_JAM'
+                  ? 'bg-[var(--tint-rose)] text-red-700 dark:text-red-300'
+                  : 'bg-[var(--tint-butter)] text-amber-800 dark:text-amber-200'
+                : 'bg-[var(--tint-sage)] text-emerald-800 dark:text-emerald-200'
             }`}
             data-testid="nav-traffic"
           >
@@ -660,70 +665,70 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
         )}
 
         {suggest && (
-          <div className="rounded-xl bg-white p-3 text-slate-900 shadow-2xl" data-testid="nav-suggest">
-            <p className="text-sm font-black"><Icon name="bolt" inline /> مسار أسرع متاح</p>
-            <p className="mt-0.5 text-xs text-slate-600">يوفّر نحو {formatDuration(suggest.savedSec)} حسب حركة المرور الآن.</p>
-            <div className="mt-2 flex gap-2">
-              <button onClick={acceptSuggestion} className="flex-1 rounded-lg bg-blue-600 py-2 text-xs font-bold text-white" data-testid="nav-suggest-accept">
+          <div className={`${MAP_PANEL} p-4`} data-testid="nav-suggest">
+            <p className="text-sm font-semibold"><Icon name="bolt" inline /> مسار أسرع متاح</p>
+            <p className="mt-0.5 text-xs text-muted">يوفّر نحو {formatDuration(suggest.savedSec)} حسب حركة المرور الآن.</p>
+            <div className="mt-3 flex gap-2">
+              <button onClick={acceptSuggestion} className="h-10 flex-1 rounded-full bg-brand-600 text-sm font-medium text-white shadow-md" data-testid="nav-suggest-accept">
                 تحويل
               </button>
-              <button onClick={dismissSuggestion} className="flex-1 rounded-lg bg-slate-100 py-2 text-xs font-bold">
+              <button onClick={dismissSuggestion} className="h-10 flex-1 rounded-full bg-surface2 text-sm font-medium text-fg">
                 تجاهل
               </button>
             </div>
           </div>
         )}
         {status === 'rerouting' && (
-          <div className="flex items-center gap-2 rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold text-white shadow-lg" data-testid="nav-rerouting">
-            <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+          <div className="flex items-center gap-2 rounded-full bg-[var(--tint-butter)] px-4 py-2 text-xs font-medium text-amber-800 shadow-float dark:text-amber-200" data-testid="nav-rerouting">
+            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
             {locating ? 'جارٍ حساب المسار من موقعك…' : 'جارٍ إعادة حساب المسار…'}
           </div>
         )}
         {rerouteErr && status !== 'rerouting' && (
-          <div className="rounded-xl bg-red-600 px-3 py-2 text-xs font-bold shadow-lg">تعذّر إعادة حساب المسار، سنحاول مجدداً عند الحاجة.</div>
+          <div className="rounded-full bg-[var(--tint-rose)] px-4 py-2 text-xs font-medium text-red-700 shadow-float dark:text-red-300">تعذّر إعادة حساب المسار، سنحاول مجدداً عند الحاجة.</div>
         )}
-        {gpsNote && !locating && <div className="rounded-xl bg-slate-800/95 px-3 py-2 text-xs shadow-lg">{gpsNote}</div>}
+        {gpsNote && !locating && <div className="rounded-full bg-surface/95 px-4 py-2 text-xs font-medium text-fg shadow-float backdrop-blur-xl">{gpsNote}</div>}
       </div>
 
       {/* ───── Speed ───── */}
       {speedKmh != null && status !== 'arrived' && (
-        <div className="absolute bottom-28 start-3 z-10 grid h-16 w-16 place-items-center rounded-full border-4 border-white bg-slate-900/90 text-center shadow-2xl" data-testid="nav-speed">
+        <div className="absolute bottom-32 start-4 z-10 grid h-16 w-16 place-items-center rounded-full bg-surface text-center text-fg shadow-float" data-testid="nav-speed">
           <div>
-            <div className="text-xl font-black leading-none">{speedKmh}</div>
-            <div className="mt-0.5 text-[9px] text-white/70">كم/س</div>
+            <div className="text-xl font-semibold leading-none">{speedKmh}</div>
+            <div className="mt-1 text-[10px] text-muted">كم/س</div>
           </div>
         </div>
       )}
 
       {/* ───── Re-center / overview ───── */}
       {status !== 'arrived' && (
-        <div className="absolute bottom-28 end-3 z-10 flex flex-col items-end gap-2">
-          <button onClick={overview} className="rounded-full bg-white px-4 py-2.5 text-sm font-bold text-slate-700 shadow-2xl active:scale-95" data-testid="nav-overview">
-            <Icon name="layers" inline /> نظرة عامة
+        <div className="absolute bottom-32 end-4 z-10 flex flex-col items-end gap-2.5">
+          <button onClick={overview} className={MAP_BTN} data-testid="nav-overview" title="نظرة عامة" aria-label="نظرة عامة">
+            <Icon name="layers" className="h-5 w-5" />
           </button>
           {!follow && (
-            <button onClick={recenter} className="flex items-center gap-1.5 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-blue-600 shadow-2xl active:scale-95" data-testid="nav-recenter">
-              <Icon name="target" inline /> إعادة التركيز
+            <button onClick={recenter} className={`${MAP_BTN} !bg-brand-600 !text-white`} data-testid="nav-recenter" title="إعادة التركيز" aria-label="إعادة التركيز">
+              <Icon name="target" className="h-5 w-5" />
             </button>
           )}
         </div>
       )}
 
-      {/* ───── Bottom bar ───── */}
-      <div className="absolute inset-x-0 bottom-0 z-10 bg-white text-slate-900 shadow-[0_-6px_24px_rgba(0,0,0,.25)]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <button onClick={onExit} className="shrink-0 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-black text-white shadow active:scale-95" data-testid="nav-exit">
+      {/* ───── Bottom bar: a floating card, like the other panels ───── */}
+      <div className="absolute inset-x-3 bottom-3 z-10 mx-auto max-w-xl" style={{ marginBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className={`flex items-center gap-3 p-2.5 ${MAP_PANEL}`}>
+          <button onClick={onExit} className="h-12 shrink-0 rounded-full bg-red-600 px-6 text-sm font-medium text-white shadow-md transition active:scale-95" data-testid="nav-exit">
             إنهاء
           </button>
           <div className="min-w-0 flex-1 text-center">
-            <div className="text-xl font-black text-emerald-700" data-testid="nav-eta">
+            <div className="text-2xl font-semibold leading-tight tracking-tight text-fg" data-testid="nav-eta">
               {arrivalClock(progress.remainingDur)}
             </div>
-            <div className="text-xs text-slate-500" data-testid="nav-remaining">
+            <div className="text-xs text-muted" data-testid="nav-remaining">
               {formatDuration(progress.remainingDur)} • {formatDistance(progress.remainingDist)}
             </div>
           </div>
-          <button onClick={toggleMute} title={muted ? 'تشغيل الصوت' : 'كتم الصوت'} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-slate-100 text-lg active:scale-95">
+          <button onClick={toggleMute} title={muted ? 'تشغيل الصوت' : 'كتم الصوت'} aria-label={muted ? 'تشغيل الصوت' : 'كتم الصوت'} className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-surface2 text-fg transition active:scale-95">
             <Icon name={muted ? 'volume-off' : 'volume'} className="h-5 w-5" />
           </button>
         </div>
@@ -731,16 +736,16 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
 
       {/* ───── Arrived ───── */}
       {status === 'arrived' && (
-        <div className="absolute inset-0 z-30 grid place-items-center bg-black/50 p-6">
-          <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center text-slate-900 shadow-2xl" data-testid="nav-arrived">
-            <div className="text-slate-700"><Icon name="flag" className="mx-auto h-12 w-12" /></div>
-            <h2 className="mt-2 text-xl font-black">وصلت إلى وجهتك</h2>
-            <p className="mt-1 text-sm text-slate-600">{destination.label}</p>
+        <div className="absolute inset-0 z-30 grid place-items-center bg-slate-900/40 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-[32px] bg-surface p-7 text-center text-fg shadow-float" data-testid="nav-arrived">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-accent-soft text-accent-soft-fg"><Icon name="flag" className="h-8 w-8" /></div>
+            <h2 className="mt-4 text-xl font-semibold">وصلت إلى وجهتك</h2>
+            <p className="mt-1 text-sm text-muted">{destination.label}</p>
             {arrivalAction && actionState !== 'done' && (
               <button
                 onClick={runArrivalAction}
                 disabled={actionState === 'busy'}
-                className="mt-5 w-full rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white disabled:opacity-60"
+                className="mt-6 h-12 w-full rounded-full bg-emerald-600 text-sm font-medium text-white shadow-md disabled:opacity-60"
                 data-testid="nav-arrival-action"
               >
                 {actionState === 'busy' ? 'جارٍ التحديث…' : arrivalAction.label}
@@ -751,17 +756,17 @@ export function NavigationScreen({ destination, mode, route, avoid, arrivalActio
                 <button
                   onClick={runSecondary}
                   disabled={secondaryBusy}
-                  className="mt-3 w-full rounded-xl border border-emerald-600 py-3 text-sm font-bold text-emerald-700 disabled:opacity-60"
+                  className="mt-3 h-12 w-full rounded-full bg-[var(--tint-sage)] text-sm font-medium text-emerald-800 disabled:opacity-60 dark:text-emerald-200"
                   data-testid="nav-secondary-action"
                 >
                   {secondaryBusy ? '…' : secondaryAction.label}
                 </button>
-                {secondaryNote && <p className="mt-2 text-xs font-semibold text-slate-600" data-testid="nav-secondary-note">{secondaryNote}</p>}
+                {secondaryNote && <p className="mt-2 text-xs font-medium text-muted" data-testid="nav-secondary-note">{secondaryNote}</p>}
               </>
             )}
-            {actionState === 'done' && <p className="mt-4 text-sm font-bold text-emerald-700" data-testid="nav-action-done"><Icon name="check" inline /> تم تحديث حالة الرحلة</p>}
-            {actionState === 'error' && <p className="mt-3 text-xs font-bold text-red-600">تعذّر تحديث الحالة، حاول مرة أخرى.</p>}
-            <button onClick={onExit} className="mt-3 w-full rounded-xl bg-blue-600 py-3 text-sm font-bold text-white" data-testid="nav-arrived-close">
+            {actionState === 'done' && <p className="mt-4 text-sm font-medium text-emerald-700 dark:text-emerald-300" data-testid="nav-action-done"><Icon name="check" inline /> تم تحديث حالة الرحلة</p>}
+            {actionState === 'error' && <p className="mt-3 text-xs font-medium text-red-600">تعذّر تحديث الحالة، حاول مرة أخرى.</p>}
+            <button onClick={onExit} className="mt-3 h-12 w-full rounded-full bg-brand-600 text-sm font-medium text-white shadow-md" data-testid="nav-arrived-close">
               {actionState === 'done' || !arrivalAction ? 'تم' : 'إغلاق'}
             </button>
           </div>

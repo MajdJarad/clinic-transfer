@@ -36,9 +36,9 @@ export function TripBar({ trip, onGo, canGo, statusLabel }: TripBarProps) {
   };
 
   return (
-    <div className="space-y-2 rounded-2xl bg-surface2/80 p-3" data-testid="trip-bar">
+    <div className="space-y-3 rounded-2xl bg-surface2 p-3.5" data-testid="trip-bar">
       <div className="flex items-center justify-between gap-2">
-        <div className={`min-w-0 text-xs font-bold ${toDestination ? 'text-emerald-700' : 'text-blue-700'}`} data-testid="trip-stage">
+        <div className={`min-w-0 text-sm font-medium ${toDestination ? 'text-emerald-700 dark:text-emerald-300' : 'text-fg'}`} data-testid="trip-stage">
           <Icon name={toDestination ? 'clinic' : 'heart'} inline />
           <span className="truncate">
             {toDestination ? 'التوجه إلى الوجهة' : 'التوجه إلى المريض'} • {trip.patientName}
@@ -51,7 +51,7 @@ export function TripBar({ trip, onGo, canGo, statusLabel }: TripBarProps) {
           type="button"
           onClick={onGo}
           disabled={!canGo}
-          className="flex-1 rounded-lg bg-blue-600 px-2 py-2 text-xs font-bold text-white disabled:opacity-50"
+          className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-brand-600 text-sm font-medium text-white shadow-md transition hover:bg-brand-700 disabled:opacity-50"
           data-testid="trip-go"
         >
           <Icon name="compass" inline /> انطلاق
@@ -61,7 +61,7 @@ export function TripBar({ trip, onGo, canGo, statusLabel }: TripBarProps) {
             type="button"
             onClick={notify}
             disabled={busy}
-            className="flex-1 rounded-lg bg-emerald-600 px-2 py-2 text-xs font-bold text-white disabled:opacity-60"
+            className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full bg-emerald-600 text-sm font-medium text-white shadow-md transition hover:bg-emerald-700 disabled:opacity-60"
             data-testid="trip-notify"
           >
             {busy ? '…' : <><Icon name="send" inline />تبليغ المريض</>}
@@ -69,7 +69,7 @@ export function TripBar({ trip, onGo, canGo, statusLabel }: TripBarProps) {
         )}
       </div>
       {notice && (
-        <p className="text-[11px] font-semibold text-muted" data-testid="trip-notice">
+        <p className="text-xs font-medium text-muted" data-testid="trip-notice">
           {notice}
         </p>
       )}

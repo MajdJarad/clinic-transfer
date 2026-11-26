@@ -1,5 +1,6 @@
 import { PlaceInput, type PickedPlace } from '../PlaceInput';
 import { Icon } from '../../../components/Icon';
+import { MAP_PANEL } from '../mapUi';
 
 interface ExploreBarProps {
   value: string;
@@ -12,12 +13,13 @@ interface ExploreBarProps {
 /** The map's home state, like Google Maps: one search box and a button that opens directions. */
 export function ExploreBar({ value, onChange, onPick, onClear, onDirections }: ExploreBarProps) {
   return (
-    <div className="flex items-center gap-2 rounded-full bg-surface/95 p-2 text-fg shadow-float backdrop-blur-xl" data-testid="explore-bar">
+    <div className={`flex h-12 items-center gap-2 rounded-full ps-4 pe-1 sm:h-14 ${MAP_PANEL}`} data-testid="explore-bar">
       <div className="min-w-0 flex-1">
         <PlaceInput
           value={value}
-          badge={<Icon name="search" />}
-          badgeClass="!bg-transparent !text-muted"
+          variant="bare"
+          badge={<Icon name="search" className="h-5 w-5" />}
+          badgeClass="!bg-transparent !text-muted !w-5"
           placeholder="ابحث في الخرائط…"
           onChange={onChange}
           onPick={onPick}
@@ -30,9 +32,9 @@ export function ExploreBar({ value, onChange, onPick, onClear, onDirections }: E
         title="الاتجاهات"
         aria-label="الاتجاهات"
         data-testid="open-directions"
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-600 text-lg text-white shadow-lg shadow-blue-600/30 transition hover:bg-blue-700 active:scale-95"
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-600 text-white shadow-md transition hover:bg-brand-700 active:scale-95 sm:h-12 sm:w-12"
       >
-        <Icon name="compass" />
+        <Icon name="compass" className="h-5 w-5" />
       </button>
     </div>
   );

@@ -4,6 +4,7 @@ import { ManeuverIcon } from '../ManeuverIcon';
 import { PlaceInput } from '../PlaceInput';
 import { formatDistance, formatDuration, type RouteData } from '../routeNav';
 import type { useWaypoints } from '../useWaypoints';
+import { MAP_PANEL } from '../mapUi';
 
 export type DepartState = { mode: 'now' | 'later'; local: string };
 
@@ -51,9 +52,9 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
   const summary = route ? `${formatDuration(route.duration)} (${formatDistance(route.distance)})` : '';
 
   return (
-    <div className="rounded-3xl bg-surface/95 p-3 text-fg shadow-float backdrop-blur-xl transition-all sm:p-4" data-testid="directions-panel">
+    <div className={`${MAP_PANEL} p-4 transition-all`} data-testid="directions-panel">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border/70 pb-2">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
@@ -61,24 +62,24 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
             title="رجوع إلى البحث"
             aria-label="رجوع إلى البحث"
             data-testid="back-to-search"
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-lg border border-border bg-surface2 text-xs text-muted hover:text-fg"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface2 text-muted transition hover:text-fg"
           >
             <Icon name="arrow" className="h-4 w-4 rtl:-scale-x-100" />
           </button>
           <div className="min-w-0">
-            <h2 className="truncate text-xs font-bold text-fg sm:text-sm">الاتجاهات</h2>
-            <p className="truncate text-[10px] text-muted sm:text-[11px]">مسار النقل والملاحة</p>
+            <h2 className="truncate text-[15px] font-semibold text-fg">الاتجاهات</h2>
+            <p className="truncate text-xs text-muted">مسار النقل والملاحة</p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <div className="flex rounded-lg bg-surface2 p-0.5 text-xs">
+          <div className="flex rounded-full bg-surface2 p-0.5 text-xs">
             {(['driving', 'walking'] as const).map((m) => (
               <button
                 key={m}
                 type="button"
                 onClick={() => p.onTravelMode(m)}
                 title={m === 'driving' ? 'سيارة' : 'مشي'}
-                className={`rounded-md p-1 text-xs transition sm:p-1.5 ${p.travelMode === m ? 'bg-blue-600 text-white shadow' : 'text-muted hover:text-fg'}`}
+                className={`grid h-8 w-9 place-items-center rounded-full text-xs transition ${p.travelMode === m ? 'bg-brand-600 text-white shadow-md' : 'text-muted hover:text-fg'}`}
               >
                 <Icon name={m === 'driving' ? 'car' : 'walk'} className="h-4 w-4" />
               </button>
@@ -88,7 +89,7 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
             type="button"
             onClick={() => setMinimized(!minimized)}
             title={minimized ? 'توسيع البطاقة' : 'تصغير لمشاهدة الخريطة بالكامل'}
-            className="grid h-7 w-7 place-items-center rounded-lg border border-border bg-surface2 text-xs text-muted transition hover:text-fg"
+            className="grid h-9 w-9 place-items-center rounded-full bg-surface2 text-muted transition hover:text-fg"
           >
             <Icon name={minimized ? 'down' : 'up'} className="h-4 w-4" />
           </button>
@@ -96,18 +97,18 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
       </div>
 
       {minimized ? (
-        <div className="flex items-center justify-between gap-2 pt-2 text-xs">
-          <div className="flex min-w-0 items-center gap-1 truncate text-[11px] text-muted">
+        <div className="flex items-center justify-between gap-2 pt-3 text-sm">
+          <div className="flex min-w-0 items-center gap-1.5 truncate text-xs text-muted">
             <span className="truncate font-medium text-fg">{wp.from.label || 'الانطلاق'}</span>
             <Icon name="arrow" className="h-4 w-4 rtl:-scale-x-100" />
             <span className="truncate font-medium text-fg">{wp.to.label || 'الوجهة'}</span>
-            {route && <span className="shrink-0 font-mono font-bold text-blue-600">({formatDuration(route.duration)})</span>}
+            {route && <span className="shrink-0 font-mono font-semibold text-brand-600 dark:text-brand-300">({formatDuration(route.duration)})</span>}
           </div>
           <button
             type="button"
             disabled={!p.canStart}
             onClick={p.onStart}
-            className="flex shrink-0 items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white shadow hover:bg-blue-700 disabled:opacity-50"
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-brand-600 px-4 text-xs font-medium text-white shadow-md transition hover:bg-brand-700 disabled:opacity-50"
           >
             <Icon name="compass" />
             <span>انطلق</span>
@@ -115,14 +116,14 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
         </div>
       ) : (
         <>
-          {p.tripSlot && <div className="mt-2.5">{p.tripSlot}</div>}
+          {p.tripSlot && <div className="mt-3">{p.tripSlot}</div>}
 
           {/* Waypoints */}
-          <div className="relative mt-2.5 space-y-1.5">
+          <div className="relative mt-3 space-y-2">
             <PlaceInput
               value={wp.fromText}
               badge="A"
-              badgeClass="bg-emerald-600"
+              badgeClass="bg-emerald-500"
               placeholder="اختر نقطة الانطلاق..."
               unresolved={wp.fromDirty || (!!wp.fromText && !wp.from.coord)}
               onChange={(t) => wp.setText('from', t)}
@@ -130,12 +131,12 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
               onClear={() => wp.clear('from')}
               onUseCurrentLocation={() => wp.useMyLocation('from')}
             />
-            <div className="relative z-10 -my-1 flex justify-end pe-3">
+            <div className="relative z-10 -my-2.5 flex justify-end pe-4">
               <button
                 type="button"
                 onClick={wp.swap}
                 title="تبديل نقطة الانطلاق والوجهة"
-                className="grid h-6 w-6 place-items-center rounded-full border border-border bg-surface text-xs text-muted shadow-sm transition hover:border-blue-500 hover:text-fg active:scale-95"
+                className="grid h-8 w-8 place-items-center rounded-full bg-surface text-muted shadow-md transition hover:text-fg active:scale-95"
               >
                 <Icon name="swap" className="h-4 w-4" />
               </button>
@@ -143,30 +144,30 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
             <PlaceInput
               value={wp.toText}
               badge="B"
-              badgeClass="bg-red-600"
+              badgeClass="bg-red-500"
               placeholder="اختر نقطة الوجهة..."
               unresolved={wp.toDirty || (!!wp.toText && !wp.to.coord)}
               onChange={(t) => wp.setText('to', t)}
               onPick={(pl) => wp.setPlace('to', { label: pl.label, coord: { lat: pl.lat, lng: pl.lng } })}
               onClear={() => wp.clear('to')}
             />
-            {wp.geoMsg && <p className="ps-1 text-[11px] text-amber-600">{wp.geoMsg}</p>}
+            {wp.geoMsg && <p className="ps-1 text-xs text-amber-600">{wp.geoMsg}</p>}
           </div>
 
           {/* Trip context (from the calendar) */}
           {p.trip?.patientName && (
-            <div className="mt-2.5 flex items-center justify-between rounded-xl border border-blue-500/20 bg-blue-500/10 px-2.5 py-1.5 text-xs">
+            <div className="mt-3 flex items-center justify-between gap-2 rounded-2xl bg-[var(--tint-sky)] px-3.5 py-2.5 text-xs">
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold text-blue-500">رحلة من التقويم</p>
-                <p className="truncate text-xs font-bold text-fg">المريض: {p.trip.patientName}</p>
-                {p.trip.driverName && <p className="truncate text-[10px] text-muted">السائق: {p.trip.driverName}</p>}
+                <p className="text-[11px] font-medium text-sky-700 dark:text-sky-300">رحلة من التقويم</p>
+                <p className="truncate text-sm font-medium text-fg">المريض: {p.trip.patientName}</p>
+                {p.trip.driverName && <p className="truncate text-xs text-muted">السائق: {p.trip.driverName}</p>}
               </div>
               {p.trip.patientPhone && (
                 <a
                   href={`https://wa.me/${p.trip.patientPhone.replace(/[^\d]/g, '')}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="shrink-0 rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white shadow hover:bg-emerald-700"
+                  className="shrink-0 rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-medium text-white shadow-md hover:bg-emerald-700"
                 >
                   واتساب
                 </a>
@@ -174,14 +175,14 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
             </div>
           )}
 
-          <div className="mt-3 space-y-2.5 border-t border-border/80 pt-2.5">
-            {p.calculating && <div className="animate-pulse py-1 text-center text-xs text-muted">جارٍ حساب المسار الأمثل...</div>}
+          <div className="mt-4 space-y-3">
+            {p.calculating && <div className="animate-pulse py-1 text-center text-sm text-muted">جارٍ حساب المسار الأمثل...</div>}
 
             {p.routeError && !p.calculating && (
-              <div className="flex items-center justify-between gap-2 rounded-xl bg-red-500/10 px-2.5 py-2 text-xs text-red-600">
+              <div className="flex items-center justify-between gap-2 rounded-2xl bg-[var(--tint-rose)] px-3.5 py-2.5 text-xs text-red-700 dark:text-red-300">
                 <span>{p.routeError}</span>
                 {p.retryable && (
-                  <button type="button" onClick={p.onRetry} className="shrink-0 rounded-lg bg-red-600 px-2 py-1 font-bold text-white">
+                  <button type="button" onClick={p.onRetry} className="shrink-0 rounded-full bg-red-600 px-3 py-1 font-medium text-white">
                     إعادة المحاولة
                   </button>
                 )}
@@ -201,20 +202,20 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
                       aria-checked={i === p.selected}
                       onClick={() => p.onSelect(i)}
                       data-testid={`route-option-${i}`}
-                      className={`flex w-40 shrink-0 snap-start items-center justify-between gap-2 rounded-xl border px-2.5 py-2 text-start transition sm:w-full ${
-                        i === p.selected ? 'border-blue-500 bg-blue-500/10' : 'border-border bg-surface2 hover:border-blue-400'
+                      className={`flex w-44 shrink-0 snap-start items-center justify-between gap-2 rounded-2xl px-3.5 py-3 text-start transition sm:w-full ${
+                        i === p.selected ? 'bg-accent-soft ring-2 ring-brand-500/25' : 'bg-surface2 hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                     >
                       <div className="min-w-0">
-                        <div className={`text-lg font-black leading-none ${i === p.selected ? 'text-blue-600' : 'text-fg'}`}>{formatDuration(r.duration)}</div>
-                        <div className="mt-1 truncate text-[11px] text-muted">
+                        <div className={`text-lg font-semibold leading-none ${i === p.selected ? 'text-accent-soft-fg' : 'text-fg'}`}>{formatDuration(r.duration)}</div>
+                        <div className="mt-1.5 truncate text-xs text-muted">
                           {formatDistance(r.distance)}
                           {r.summary ? ` • عبر ${r.summary}` : ''}
                         </div>
                       </div>
                       <div className="flex shrink-0 flex-col items-end gap-1">
-                        {i === fastest && <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600">الأسرع</span>}
-                        {jam && <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-bold text-red-600">ازدحام</span>}
+                        {i === fastest && <span className="rounded-full bg-[var(--tint-sage)] px-2.5 py-0.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">الأسرع</span>}
+                        {jam && <span className="rounded-full bg-[var(--tint-rose)] px-2.5 py-0.5 text-[11px] font-medium text-red-700 dark:text-red-300">ازدحام</span>}
                       </div>
                     </button>
                   );
@@ -222,33 +223,33 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
               </div>
             )}
             {p.depart.mode === 'later' && p.routes.length > 0 && !p.calculating && !p.departPast && (
-              <p className="text-[10px] text-muted"><Icon name="clock" inline /> الأوقات مقدّرة حسب الازدحام المتوقع وقت المغادرة المحدد.</p>
+              <p className="text-xs text-muted"><Icon name="clock" inline /> الأوقات مقدّرة حسب الازدحام المتوقع وقت المغادرة المحدد.</p>
             )}
-            {p.departPast && <p className="text-[10px] text-amber-600">وقت المغادرة مضى، لذلك حُسب المسار للمغادرة الآن.</p>}
+            {p.departPast && <p className="text-xs text-amber-600">وقت المغادرة مضى، لذلك حُسب المسار للمغادرة الآن.</p>}
 
             {/* Steps / options / share share one row (keeps the card short on phones) */}
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
               {route && route.steps.length > 0 && !p.calculating && (
-                <button type="button" onClick={() => setShowSteps((v) => !v)} className="text-[11px] font-semibold text-blue-600 hover:underline" data-testid="steps-toggle">
+                <button type="button" onClick={() => setShowSteps((v) => !v)} className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-300" data-testid="steps-toggle">
                   {showSteps ? 'إخفاء الخطوات' : `عرض الخطوات (${route.steps.length})`}
                 </button>
               )}
               <div className="ms-auto flex items-center gap-3">
                 {route && (
-                  <button type="button" onClick={p.onShare} className="text-[11px] font-semibold text-muted hover:text-fg" data-testid="share-route">
+                  <button type="button" onClick={p.onShare} className="text-xs font-medium text-muted transition hover:text-fg" data-testid="share-route">
                     <Icon name="link" inline /> مشاركة
                   </button>
                 )}
-                <button type="button" onClick={() => setShowOptions((v) => !v)} className="text-[11px] font-semibold text-muted hover:text-fg" data-testid="options-toggle">
+                <button type="button" onClick={() => setShowOptions((v) => !v)} className="text-xs font-medium text-muted transition hover:text-fg" data-testid="options-toggle">
                   <Icon name="sliders" inline /> الخيارات {optionsActive ? '(مفعّلة)' : ''} <Icon name={showOptions ? 'up' : 'down'} inline className="h-3.5 w-3.5" />
                 </button>
               </div>
 
               {showSteps && route && (
-                <ol className="max-h-44 basis-full space-y-1 overflow-y-auto pe-1" data-testid="route-steps">
+                <ol className="max-h-48 basis-full space-y-1.5 overflow-y-auto pe-1" data-testid="route-steps">
                   {route.steps.map((st, i) => (
-                    <li key={i} className="flex items-center gap-2 rounded-lg bg-surface2 px-2 py-1.5 text-[11px]">
-                      <ManeuverIcon maneuver={st.maneuver} size={18} className="shrink-0 text-blue-600" />
+                    <li key={i} className="flex items-center gap-2.5 rounded-2xl bg-surface2 px-3 py-2 text-xs">
+                      <ManeuverIcon maneuver={st.maneuver} size={18} className="shrink-0 text-brand-600 dark:text-brand-300" />
                       <span className="min-w-0 flex-1 truncate text-fg">{st.instruction}</span>
                       <span className="shrink-0 font-mono text-muted">{formatDistance(st.distance)}</span>
                     </li>
@@ -257,7 +258,7 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
               )}
 
               {showOptions && (
-                <div className="basis-full space-y-2 rounded-xl bg-surface2/60 p-2.5 text-[11px]" data-testid="options-panel">
+                <div className="basis-full space-y-3 rounded-2xl bg-surface2 p-3.5 text-xs" data-testid="options-panel">
                   {p.travelMode === 'driving' ? (
                     <>
                       <div className="flex flex-wrap items-center gap-2">
@@ -265,7 +266,7 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
                         <select
                           value={p.depart.mode}
                           onChange={(e) => p.onDepart({ ...p.depart, mode: e.target.value as 'now' | 'later', local: p.depart.local || nowLocalMin() })}
-                          className="rounded-lg border border-border bg-surface px-2 py-1 text-[11px] text-fg"
+                          className="rounded-full bg-surface px-3 py-1.5 text-xs text-fg shadow-sm outline-none"
                           data-testid="depart-mode"
                         >
                           <option value="now">الآن</option>
@@ -277,7 +278,7 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
                             min={nowLocalMin()}
                             value={p.depart.local}
                             onChange={(e) => p.onDepart({ ...p.depart, local: e.target.value })}
-                            className="rounded-lg border border-border bg-surface px-2 py-1 text-[11px] text-fg"
+                            className="rounded-full bg-surface px-3 py-1.5 text-xs text-fg shadow-sm outline-none"
                             dir="ltr"
                             data-testid="depart-time"
                           />
@@ -295,7 +296,7 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
                               checked={p.avoid[k]}
                               onChange={(e) => p.onAvoid({ ...p.avoid, [k]: e.target.checked })}
                               data-testid={`avoid-${k}`}
-                              className="h-3.5 w-3.5 accent-blue-600"
+                              className="h-4 w-4 accent-[var(--ring)]"
                             />
                             {label}
                           </label>
@@ -314,13 +315,13 @@ export function DirectionsPanel(p: DirectionsPanelProps) {
               disabled={!p.canStart}
               onClick={p.onStart}
               data-testid="start-nav"
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white shadow-lg shadow-blue-600/30 transition hover:bg-blue-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none sm:py-3 sm:text-sm"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-brand-600 text-sm font-medium text-white shadow-md transition hover:bg-brand-700 hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
             >
               <Icon name="compass" />
               <span>{p.canStart ? `ابدأ الملاحة${summary ? ` • ${summary}` : ''}` : p.startHint || 'ابدأ الملاحة'}</span>
             </button>
             {p.canStart && !wp.fromIsGps && (
-              <p className="text-center text-[10px] text-muted" data-testid="start-from-gps-note">
+              <p className="text-center text-xs text-muted" data-testid="start-from-gps-note">
                 الملاحة تبدأ من موقعك الفعلي (GPS) باتجاه الوجهة.
               </p>
             )}
