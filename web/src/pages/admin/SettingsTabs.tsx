@@ -182,7 +182,7 @@ export function MessagesTab() {
 
 export function SettingsTab() {
   const { data, setData, error: loadError } = useServerSettings();
-  const [form, setForm] = useState({ clinicName: '', mapCenterLat: '', mapCenterLng: '', mapZoom: '' });
+  const [form, setForm] = useState({ clinicName: '', mapCenterLat: '', mapCenterLng: '', mapZoom: '', emergencyCallNumber: '' });
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -193,6 +193,7 @@ export function SettingsTab() {
       mapCenterLat: String(s.mapCenterLat),
       mapCenterLng: String(s.mapCenterLng),
       mapZoom: String(s.mapZoom),
+      emergencyCallNumber: s.emergencyCallNumber ?? '',
     });
   useEffect(() => {
     if (data) fill(data.settings);
@@ -204,6 +205,7 @@ export function SettingsTab() {
       mapCenterLat: Number(form.mapCenterLat),
       mapCenterLng: Number(form.mapCenterLng),
       mapZoom: Number(form.mapZoom),
+      emergencyCallNumber: form.emergencyCallNumber,
     }),
     [form],
   );
@@ -273,6 +275,16 @@ export function SettingsTab() {
             <Input type="number" min="1" max="20" value={form.mapZoom} onChange={(e) => setForm({ ...form, mapZoom: e.target.value })} dir="ltr" data-testid="map-zoom" />
           </Field>
         </div>
+      </Card>
+
+      <Card className="space-y-4 p-5">
+        <div className="border-b border-border pb-2.5">
+          <h3 className="text-sm font-bold text-fg"><Icon name="phone" inline /> الاتصال الجماعي الطارئ</h3>
+          <p className="text-xs text-muted">يظهر للسائق زر «اتصال جماعي فوري» في شاشة الإنذار. ضع رقم خط مؤتمرات أو رقم الطوارئ، أو رابط مكالمة جماعية (واتساب، Meet، Zoom).</p>
+        </div>
+        <Field label="رقم أو رابط الاتصال الجماعي">
+          <Input value={form.emergencyCallNumber} onChange={(e) => setForm({ ...form, emergencyCallNumber: e.target.value })} dir="ltr" placeholder="+90 212 000 00 00  أو  https://…" data-testid="emergency-call" />
+        </Field>
       </Card>
 
       <SaveBar busy={busy} saved={saved} error={error} onSave={save} onReset={reset} />

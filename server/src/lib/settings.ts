@@ -53,6 +53,8 @@ export const settingsSchema = z.object({
   mapCenterLat: z.number().min(-90).max(90),
   mapCenterLng: z.number().min(-180).max(180),
   mapZoom: z.number().int().min(1).max(20),
+  /** Emergency group call: a phone number (conference line / hotline) or a call link, offered to drivers in the alert sheet. */
+  emergencyCallNumber: z.string().trim().max(200).default(''),
 });
 export type AppSettings = z.infer<typeof settingsSchema>;
 
@@ -65,6 +67,7 @@ export function defaultSettings(): AppSettings {
     mapCenterLat: env.mapCenterLat,
     mapCenterLng: env.mapCenterLng,
     mapZoom: Math.round(env.mapCenterZoom) || 11,
+    emergencyCallNumber: '',
   };
 }
 

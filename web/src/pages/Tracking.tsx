@@ -29,7 +29,8 @@ export function Tracking() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [followId, setFollowId] = useState<string | null>(null);
   const [fitSignal, setFitSignal] = useState(0);
-  const [traffic, setTraffic] = useState(false);
+  const [traffic, setTraffic] = useState(true);
+  const [satellite, setSatellite] = useState(true); // satellite + live traffic from the start; both can be switched off
   const [hideQuiet, setHideQuiet] = useState(false); // drivers who stopped reporting stay on the map, grey, with their age
   const [panelOpen, setPanelOpen] = useState(() => window.innerWidth >= 768);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -111,7 +112,7 @@ export function Tracking() {
   return (
     <div
       className={`w-full overflow-hidden bg-slate-900 ${
-        isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : 'relative h-[calc(100dvh-10rem-var(--chrome-extra,0px))] rounded-3xl sm:h-[calc(100vh-6.5rem-var(--chrome-extra,0px))]'
+        isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen' : 'relative h-[calc(100dvh-7rem-var(--chrome-extra,0px))] rounded-3xl sm:h-[calc(100vh-3rem-var(--chrome-extra,0px))]'
       }`}
       data-testid="tracking-screen"
     >
@@ -127,23 +128,25 @@ export function Tracking() {
         }}
         fitSignal={fitSignal}
         traffic={traffic}
+        satellite={satellite}
         className="absolute inset-0 h-full w-full"
       />
 
       {/* Start column: the summary card on top, the drivers panel under it (a bottom sheet on phones) */}
       <div className="pointer-events-none absolute inset-x-3 bottom-3 top-3 z-20 flex flex-col gap-3 sm:inset-x-auto sm:bottom-4 sm:start-4 sm:top-4 sm:w-96">
-        <div className={`pointer-events-auto ${MAP_PANEL} p-3.5`} data-testid="tracking-summary">
-          <div className="flex items-center justify-between gap-3">
-            <h1 className="truncate text-[15px] font-semibold text-fg">{t('tracking.title')}</h1>
-            <span className={`shrink-0 text-xs ${offline ? 'font-medium text-red-600' : 'text-muted'}`} data-testid="tracking-status">
+        <div className={`pointer-events-auto flex items-center gap-2 px-3 py-2 ${MAP_PANEL} sm:block sm:p-3.5`} data-testid="tracking-summary">
+          <div className="flex min-w-0 items-center justify-between gap-3">
+            <h1 className="truncate text-[13px] font-semibold text-fg sm:text-[15px]">{t('tracking.title')}</h1>
+            <span className={offline ? 'shrink-0 text-xs font-medium text-red-600' : 'hidden shrink-0 text-xs text-muted sm:inline'} data-testid="tracking-status">
               {offline ? 'انقطع الاتصال… نحاول مجدداً' : loaded ? `آخر تحديث ${new Date(fetchedAt).toLocaleTimeString('en-GB')}` : 'جارٍ التحميل…'}
             </span>
           </div>
-          <div className="mt-3 grid grid-cols-4 gap-2">
+          <div className="ms-auto flex shrink-0 items-center gap-1.5 sm:ms-0 sm:mt-3 sm:grid sm:grid-cols-4 sm:gap-2">
             {(['live', 'recent', 'stale', 'none'] as Freshness[]).map((k) => (
-              <div key={k} className="rounded-2xl bg-surface2 px-1 py-2 text-center">
-                <b className="block text-lg font-semibold leading-none text-fg" data-testid={`count-${k}`}>{counts[k]}</b>
-                <span className="mt-1.5 flex items-center justify-center gap-1 text-[11px] text-muted">
+              <div key={k} title={LEVEL_TEXT[k]} className="flex items-center gap-1 rounded-full bg-surface2 px-2 py-0.5 sm:block sm:rounded-2xl sm:px-1 sm:py-2 sm:text-center">
+                <span className="h-2 w-2 rounded-full sm:hidden" style={{ background: FRESHNESS_COLOR[k] }} />
+                <b className="text-[13px] font-semibold text-fg sm:block sm:text-lg sm:leading-none" data-testid={`count-${k}`}>{counts[k]}</b>
+                <span className="hidden items-center justify-center gap-1 text-[11px] text-muted sm:mt-1.5 sm:flex">
                   <span className="h-2 w-2 rounded-full" style={{ background: FRESHNESS_COLOR[k] }} />
                   {LEVEL_TEXT[k]}
                 </span>
@@ -159,7 +162,7 @@ export function Tracking() {
             data-testid="driver-list"
           >
             <div className="shrink-0 p-3 pb-2">
-              <div className="flex h-11 items-center gap-2.5 rounded-full bg-surface2 px-4">
+              <div className="flex h-11 items-center gap-2.5 rounded-full bg-surface2 px-4 transition focus-within:bg-surface focus-within:ring-4 focus-within:ring-[color-mix(in_srgb,var(--ring)_16%,transparent)]">
                 <Icon name="search" className="h-[18px] w-[18px] shrink-0 text-muted" />
                 <input
                   value={q}
@@ -273,7 +276,7 @@ export function Tracking() {
       </div>
 
       {/* Round map buttons: same size and place as on the map screen */}
-      <div className="absolute end-3 top-[8.25rem] z-20 flex flex-col items-end gap-2.5 sm:end-4 sm:top-4">
+      <div className="absolute end-3 top-[4.25rem] z-20 flex flex-col items-end gap-2.5 sm:end-4 sm:top-4">
         <button
           type="button"
           onClick={() => setPanelOpen((v) => !v)}
@@ -301,6 +304,9 @@ export function Tracking() {
         </button>
         <button type="button" onClick={() => setTraffic((v) => !v)} className={`${MAP_BTN} ${traffic ? MAP_BTN_ON : ''}`} title="حركة المرور" aria-label="حركة المرور" aria-pressed={traffic}>
           <Icon name="traffic" className="h-5 w-5" />
+        </button>
+        <button type="button" onClick={() => setSatellite((v) => !v)} className={`${MAP_BTN} ${satellite ? MAP_BTN_ON : ''}`} title="قمر صناعي" aria-label="قمر صناعي" aria-pressed={satellite} data-testid="toggle-satellite">
+          <Icon name="layers" className="h-5 w-5" />
         </button>
         {staleCount > 0 && (
           <button
