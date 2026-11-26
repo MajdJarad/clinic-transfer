@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Icon } from '../components/Icon';
 import { api } from '../api';
 import { useAuth } from '../auth';
+import { useClinicName } from '../config';
 import { useI18n } from '../i18n';
 import { useLocationSharing } from '../features/tracking/useLocationSharing';
 import { DriverAlertButton } from '../features/alerts/DriverAlertButton';
@@ -42,6 +43,7 @@ const ACTIVE_STATUSES: TripStatus[] = ['ASSIGNED', 'EN_ROUTE', 'ARRIVED', 'PICKE
 export function DriverApp() {
   const { user, logout } = useAuth();
   const { t, intl } = useI18n();
+  useClinicName(); // sets the browser tab title to the clinic's name
   const driverId = user?.driverId ?? '';
 
   // Active Tab

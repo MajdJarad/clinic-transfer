@@ -4,6 +4,7 @@ import { Icon } from './Icon';
 import { Logo } from './Logo';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth';
+import { useClinicName } from '../config';
 import { useI18n } from '../i18n';
 import { roleKeys } from '../labels';
 import { LanguageSelect, ThemeToggle } from './Controls';
@@ -60,6 +61,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { t } = useI18n();
   const { openCount } = useAlerts();
+  const clinicName = useClinicName(); // the admin's clinic name: shown under the logo and as the browser tab title
   const [more, setMore] = useState(false);
   const location = useLocation();
   useEffect(() => setMore(false), [location.pathname]);
@@ -86,7 +88,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
         <div className="px-6 pb-2 pt-6" dir="ltr">
           <Logo className="h-9 w-auto" />
         </div>
-        <p className="px-6 pb-1 text-[11px] font-medium tracking-wide text-[var(--sidebar-muted)]">{t('common.app')}</p>
+        <p className="px-6 pb-1 text-[11px] font-medium tracking-wide text-[var(--sidebar-muted)]">{clinicName || t('common.app')}</p>
 
         <nav className="flex-1 overflow-y-auto px-3 pb-3">
           {sections.map(({ g, list }) => (
