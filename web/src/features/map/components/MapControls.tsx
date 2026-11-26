@@ -39,8 +39,8 @@ export function MapControls(p: MapControlsProps) {
   const [open, setOpen] = useState(false);
   const activeLayers = (Object.keys(p.layers) as LayerKey[]).filter((k) => p.layers[k]).length;
   return (
-    <div className="absolute bottom-[var(--map-controls-bottom,0.75rem)] end-3 z-30 flex flex-col items-end gap-2.5 sm:bottom-auto sm:end-4 sm:top-4">
-      <div className="relative">
+    <div className="absolute bottom-[var(--map-controls-bottom,0.75rem)] end-3 z-30 flex flex-row items-center gap-2.5 sm:bottom-auto sm:end-4 sm:top-4 sm:flex-col sm:items-end">
+      <div className="relative max-sm:static">
         <button
           type="button"
           onClick={() => setOpen(!open)}

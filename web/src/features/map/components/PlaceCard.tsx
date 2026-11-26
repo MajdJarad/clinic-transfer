@@ -26,7 +26,7 @@ export function PlaceCard({ place, view, onClose, onDirections, onUseAsDestinati
   const icon = 'grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface2 text-fg transition hover:bg-slate-200 dark:hover:bg-slate-700';
   return (
     <div
-      className={`absolute inset-x-3 bottom-4 z-30 ${MAP_PANEL} p-4 max-sm:bottom-[var(--map-controls-bottom,1rem)] max-sm:me-16 sm:inset-x-auto sm:start-4 sm:bottom-4 ${MAP_COL}`}
+      className={`absolute inset-x-3 bottom-4 z-30 ${MAP_PANEL} p-4 max-sm:bottom-[calc(var(--map-controls-bottom,0.75rem)+3.5rem)] sm:inset-x-auto sm:start-4 sm:bottom-4 ${MAP_COL}`}
       data-testid="picked-card"
     >
       <div className="flex items-start justify-between gap-2">

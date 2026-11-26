@@ -38,8 +38,8 @@ export function TripBar({ trip, onGo, canGo, statusLabel }: TripBarProps) {
   return (
     <div className="space-y-3 rounded-2xl bg-surface2 p-3.5" data-testid="trip-bar">
       <div className="flex items-center justify-between gap-2">
-        <div className={`min-w-0 text-sm font-medium ${toDestination ? 'text-emerald-700 dark:text-emerald-300' : 'text-fg'}`} data-testid="trip-stage">
-          <Icon name={toDestination ? 'clinic' : 'heart'} inline />
+        <div className={`flex min-w-0 items-center gap-2 text-sm font-medium ${toDestination ? 'text-emerald-700 dark:text-emerald-300' : 'text-fg'}`} data-testid="trip-stage">
+          <Icon name={toDestination ? 'clinic' : 'heart'} className="h-4 w-4" />
           <span className="truncate">
             {toDestination ? 'التوجه إلى الوجهة' : 'التوجه إلى المريض'} • {trip.patientName}
           </span>
